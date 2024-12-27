@@ -1,0 +1,47 @@
+{
+  "project_info": {
+    "project_number": "767902581735",
+    "project_id": "we-chat-ed40a",
+    "storage_bucket": "we-chat-ed40a.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:767902581735:android:750cff6d98be151155f342",
+        "android_client_info": {
+          "package_name": "com.example.chatting_application"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "767902581735-t5nhj73oqla7sc9ji8j699jor29bmjet.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.chatting_application",
+            "certificate_hash": "d654146b340610f537d2e4d35adb38e7ef2800c5"
+          }
+        },
+        {
+          "client_id": "767902581735-t06sdqit1e40l3h2hqrfqr91ir30s2u5.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBdCHBVZUw5BcGpyyvxsB2iCp_S5zJT9BU"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "767902581735-t06sdqit1e40l3h2hqrfqr91ir30s2u5.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
