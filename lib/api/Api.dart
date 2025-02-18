@@ -14,6 +14,7 @@ class APIs {
   static Future<bool> userExist() async {
     return (await firestore.collection('user').doc(user.uid).get()).exists;
   }
+  
 
   static Future<void> getSelfInfo() async {
     await firestore.collection('user').doc(user.uid).get().then(
@@ -71,11 +72,12 @@ static Stream<QuerySnapshot<Map<String, dynamic>>> getUserinfo(ChatUser chatuser
   });
 }
 
-  static Future<void> updateUserinfo() async {
+  static Future<void> updateUserinfo([String? imageUrl]) async {
     firestore
         .collection('user')
         .doc(user.uid)
-        .update({'name': me.name, 'about': me.about});
+        .update({'name': me.name, 'about': me.about, 'image': me.image});
+        print(imageUrl);
   }
 
   // static Stream<QuerySnapshot<Map<String, dynamic>>> getAllmsg(ChatUser user) {

@@ -7,6 +7,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 
+
 class Login extends StatefulWidget {
   const Login({super.key});
 
@@ -60,6 +61,7 @@ class _LoginState extends State<Login> {
       print('\nUser: ${user.user}');
     }
   }
+ 
 
   Future<UserCredential?> _signInWithGoogle() async {
     try {
@@ -77,8 +79,7 @@ class _LoginState extends State<Login> {
         idToken: googleAuth?.idToken,
       );
 
-      Floatingwidget(
-              title: 'Success', subtitle: "logged into the account")
+      Floatingwidget(title: 'Success', subtitle: "logged into the account")
           .showAchievement(context);
       return await FirebaseAuth.instance.signInWithCredential(credential);
     } catch (e) {
@@ -86,16 +87,6 @@ class _LoginState extends State<Login> {
       Floatingwidget(title: 'ERROR', subtitle: 'Internet not connected')
           .showAchievement(context);
       throw Exception('Failed to sign in with Google');
-    }
-  }
-
-  Future<void> _signout() async {
-    try {
-      await FirebaseAuth.instance.signOut();
-      await googleSignIn.signOut();
-      print("User signed out successfully");
-    } catch (e) {
-      print("Error signing out: $e");
     }
   }
 
@@ -143,7 +134,10 @@ class _LoginState extends State<Login> {
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.green[300],
                     ),
-                    onPressed: _handlegooglesignin,
+                    onPressed: (){
+                      _handlegooglesignin();
+                      
+                    },
                     label: RichText(
                       text: const TextSpan(
                         style: TextStyle(color: Colors.black, fontSize: 12),

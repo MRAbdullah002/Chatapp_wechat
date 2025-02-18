@@ -1,17 +1,15 @@
 import 'dart:io';
-
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:chatting_application/api/Api.dart';
 import 'package:chatting_application/helper/littlething.dart';
 import 'package:chatting_application/model/ChatUser.dart';
 import 'package:chatting_application/screens/login.dart';
-
 import 'package:flutter/cupertino.dart';
-
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 class ProfileScreen extends StatefulWidget {
   final ChatUser user;
@@ -24,10 +22,13 @@ class ProfileScreen extends StatefulWidget {
 class _ProfileScreenState extends State<ProfileScreen> {
   final _formkey = GlobalKey<FormState>();
   String? _image;
+  final SupabaseClient supabase = Supabase.instance.client;
+
   @override
   Widget build(BuildContext context) {
     final mq = MediaQuery.of(context).size;
     return Scaffold(
+      backgroundColor: Colors.white,
       appBar: AppBar(
         backgroundColor: Colors.white,
         scrolledUnderElevation: 0,
@@ -71,6 +72,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         ),
       ),
       body: SingleChildScrollView(
+      
         child: GestureDetector(
           onTap: () => FocusScope.of(context).unfocus(),
           child: Form(
@@ -85,29 +87,29 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   ),
                   Stack(
                     children: [
-                      _image!=null? ClipRRect(
-                        borderRadius: BorderRadius.circular(mq.height * .3),
-                        child:Image.file(
-                         File(_image!),
-                          width: mq.height * .2,
-                          height: mq.height * .2,
-                          fit: BoxFit.cover,
-                          
-                        ),
-                      ):
-                      ClipRRect(
-                        borderRadius: BorderRadius.circular(mq.height * .3),
-                        child: CachedNetworkImage(
-                          width: mq.height * .2,
-                          height: mq.height * .2,
-                          fit: BoxFit.cover,
-                          imageUrl: widget.user.image.toString(),
-                          errorWidget: (context, url, error) =>
-                              const CircleAvatar(
-                            child: Icon(CupertinoIcons.person),
-                          ),
-                        ),
-                      ),
+                      _image != null
+                          ? ClipRRect(
+                              borderRadius: BorderRadius.circular(mq.height * .3),
+                              child: Image.file(
+                                File(_image!),
+                                width: mq.height * .2,
+                                height: mq.height * .2,
+                                fit: BoxFit.cover,
+                              ),
+                            )
+                          : ClipRRect(
+                              borderRadius: BorderRadius.circular(mq.height * .3),
+                              child: CachedNetworkImage(
+                                width: mq.height * .2,
+                                height: mq.height * .2,
+                                fit: BoxFit.cover,
+                                imageUrl: widget.user.image.toString(),
+                                errorWidget: (context, url, error) =>
+                                    const CircleAvatar(
+                                  child: Icon(CupertinoIcons.person),
+                                ),
+                              ),
+                            ),
                       Positioned(
                         right: 0,
                         bottom: 0,
@@ -251,8 +253,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           print('sucees ${image.path}');
                           Navigator.pop(context);
                           setState(() {
-                            _image=image.path;
+                            _image = image.path;
                           });
+                          await _uploadImage(image);
                         } else {
                           print('failed');
                         }
@@ -268,7 +271,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           width: 80,
                           child: Image.asset('assets/images/gallery.png'))),
                   ElevatedButton(
-                      onPressed: () async {final ImagePicker picker = ImagePicker();
+                      onPressed: () async {
+                        final ImagePicker picker = ImagePicker();
 
                         final XFile? image =
                             await picker.pickImage(source: ImageSource.camera);
@@ -276,11 +280,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           print('sucees ${image.path}');
                           Navigator.pop(context);
                           setState(() {
-                            _image=image.path;
+                            _image = image.path;
                           });
+                          await _uploadImage(image);
                         } else {
                           print('failed');
-                        }},
+                        }
+                      },
                       style: ElevatedButton.styleFrom(
                           elevation: 3,
                           shape: RoundedRectangleBorder(
@@ -300,4 +306,33 @@ class _ProfileScreenState extends State<ProfileScreen> {
           );
         });
   }
+
+Future<void> _uploadImage(XFile image) async {
+  try {
+    final file = File(image.path);
+    final fileExt = image.path.split('.').last;
+    final fileName = '${DateTime.now().toIso8601String()}.$fileExt';
+    final filePath = 'profile-pictures/$fileName';
+
+    // Upload image to Supabase storage
+    await supabase.storage.from('profile-pictures').upload(filePath, file);
+
+    // Get the public URL of the uploaded image
+    final imageUrl = supabase.storage.from('profile-pictures').getPublicUrl(filePath);
+    print('Uploaded Image URL: $imageUrl'); // Debugging URL output
+
+    // Update user profile in Firestore
+    await APIs.updateUserinfo(imageUrl);
+
+    // Update UI
+    setState(() {
+      widget.user.image = imageUrl;
+    });
+
+  } catch (e) {
+    print('Error uploading image: $e');
+  }
+}
+
+
 }
