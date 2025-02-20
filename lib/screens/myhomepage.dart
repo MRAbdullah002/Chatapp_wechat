@@ -3,12 +3,11 @@ import 'package:chatting_application/helper/cardofchat.dart';
 import 'package:chatting_application/model/ChatUser.dart';
 import 'package:chatting_application/requests/invite.dart';
 import 'package:chatting_application/screens/Profilescreen.dart';
-
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:loading_indicator/loading_indicator.dart';
-
+import 'package:lottie/lottie.dart';
+import 'package:page_transition/page_transition.dart';
 
 class MyHomePage extends StatefulWidget {
   const MyHomePage({super.key});
@@ -124,123 +123,122 @@ class _MyHomePageState extends State<MyHomePage> {
             padding: const EdgeInsets.only(bottom: 20.0, right: 10),
             child: FloatingActionButton(
               onPressed: () {
-                Navigator.push(context, MaterialPageRoute(builder: (context)=>const Invite() ,));
+                Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const Invite(),
+                    ));
               },
               elevation: 1,
               backgroundColor: Colors.blue,
-              child: const Icon(Icons.add),
+              child: const Icon(Icons.person_add_alt_1_outlined),
             ),
           ),
           body: Container(
-            color: Colors.white,
-            child:StreamBuilder<List<ChatUser>>(
-  stream: APIs.getAcceptedFriends(),
-  builder: (context, snapshot) {
-    switch (snapshot.connectionState) {
-      case ConnectionState.waiting:
-      case ConnectionState.none:
-        return const Center(
-          child: SizedBox(
-            height: 200,
-            width: 100,
-            child: LoadingIndicator(
-              indicatorType: Indicator.ballPulse,
-              colors: [
-                Color.fromARGB(255, 54, 120, 244),
-                Color.fromARGB(255, 34, 74, 255),
-                Colors.cyan
-              ],
-            ),
-          ),
-        );
-      case ConnectionState.active:
-      case ConnectionState.done:
-        final data = snapshot.data; // ✅ No need for `.docs`
-        _list = data ?? [];
+              color: Colors.white,
+              child: StreamBuilder<List<ChatUser>>(
+                stream: APIs.getAcceptedFriends(),
+                builder: (context, snapshot) {
+                  final data = snapshot.data; // ✅ No need for `.docs`
+                  _list = data ?? [];
 
-        if (_list.isNotEmpty) {
-          return ListView.builder(
-            itemCount: _issearching ? _searchlist.length : _list.length,
-            itemBuilder: (context, index) {
-              final user = _issearching ? _searchlist[index] : _list[index];
-              return GestureDetector(
-                onLongPress: () => _showDeleteDialog(user),
-                child: CarduserChat(
-                  user: user,
-                  showStatus: true, // Show status
-                ),
-              );
-            },
-          );
-        } else {
-          return Center(
-            child: Text(
-              'No connection found',
-              style: GoogleFonts.poppins(fontSize: 25),
-            ),
-          );
-        }
-    }
-  },
-)
-
-          ),
+                  if (_list.isNotEmpty) {
+                    return ListView.builder(
+                      itemCount:
+                          _issearching ? _searchlist.length : _list.length,
+                      itemBuilder: (context, index) {
+                        final user =
+                            _issearching ? _searchlist[index] : _list[index];
+                        return GestureDetector(
+                          onLongPress: () => _showDeleteDialog(user),
+                          child: CarduserChat(
+                            user: user,
+                            showStatus: true, // Show status
+                          ),
+                        );
+                      },
+                    );
+                  } else {
+                    return Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        crossAxisAlignment: CrossAxisAlignment.center,
+                        children: [
+                          Text(
+                            'Make New Friends',
+                            style: GoogleFonts.poppins(fontSize: 25),
+                          ),
+                          Lottie.asset('assets/images/friends.json'),
+                          MaterialButton(
+                            
+                            onPressed: () {
+                              Navigator.push(
+                                context,
+                                PageTransition(
+                                  type: PageTransitionType.fade,
+                                  child: const Invite(),
+                                ),
+                              );
+                            },
+                            elevation: 5,
+                            color: Colors.blueGrey,
+                            child: const Text('Invite',style: TextStyle(fontWeight: FontWeight.w700,fontSize: 20,color: Colors.white,letterSpacing: 2),),
+                          ),
+                        ],
+                      ),
+                    );
+                  }
+                },
+              )),
         ),
       ),
     );
   }
 
+  Future<void> _deleteChat(ChatUser user) async {
+    print("Deleting chat for user: ${user.name} (${user.id})");
+    try {
+      await APIs.deleteChat(user); // Ensure Firestore chat is deleted
+      print("Chat deleted from Firestore!");
 
+      setState(() {
+        _list.removeWhere((u) => u.id == user.id); // Remove from local list
+      });
 
-
-Future<void> _deleteChat(ChatUser user) async {
-  print("Deleting chat for user: ${user.name} (${user.id})");
-  try {
-    await APIs.deleteChat(user); // Ensure Firestore chat is deleted
-    print("Chat deleted from Firestore!");
-
-    setState(() {
-      _list.removeWhere((u) => u.id == user.id); // Remove from local list
-    });
-
-    print("Chat removed from UI list!");
-  } catch (e) {
-    print("Error in _deleteChat: $e");
+      print("Chat removed from UI list!");
+    } catch (e) {
+      print("Error in _deleteChat: $e");
+    }
   }
-}
 
+  Future<void> _showDeleteDialog(ChatUser user) async {
+    print("Showing delete dialog for ${user.name}");
 
-
-Future<void> _showDeleteDialog(ChatUser user) async {
-  print("Showing delete dialog for ${user.name}");
-
-  showDialog(
-    context: context,
-    builder: (context) {
-      return AlertDialog(
-        title: Text('Delete Chat'),
-        content: Text('Are you sure you want to delete this chat?'),
-        actions: [
-          TextButton(
-            onPressed: () {
-              print("User canceled deletion");
-              Navigator.pop(context);
-            },
-            child: Text('Cancel'),
-          ),
-          TextButton(
-            onPressed: () async {
-              print("User confirmed deletion");
-              await _deleteChat(user); // Wait for deletion
-              Navigator.pop(context);  // Close dialog after deletion
-            },
-            child: Text('Delete', style: TextStyle(color: Colors.red)),
-          ),
-        ],
-      );
-    },
-  );
-}
-
-
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Delete Chat'),
+          content: const Text('Are you sure you want to delete this chat?'),
+          actions: [
+            TextButton(
+              onPressed: () {
+                print("User canceled deletion");
+                Navigator.pop(context);
+              },
+              child: const Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: () async {
+                print("User confirmed deletion");
+                await _deleteChat(user); // Wait for deletion
+                Navigator.pop(context); // Close dialog after deletion
+              },
+              child: const Text('Delete', style: TextStyle(color: Colors.red)),
+            ),
+          ],
+        );
+      },
+    );
+  }
 }
