@@ -1,3 +1,5 @@
+import 'dart:math';
+
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:chatting_application/api/Api.dart';
 import 'package:chatting_application/helper/message_.dart';
@@ -67,7 +69,7 @@ void initState() {
               backgroundColor: Colors.white,
               automaticallyImplyLeading: false,
               flexibleSpace: Padding(
-                padding:  EdgeInsets.only(top: mq.height*.05),
+                padding:  EdgeInsets.only(top: mq.height*.03),
                 child: Flexible(child: _appbar()),
               ),
             ),
@@ -137,19 +139,23 @@ void initState() {
     );
   }
 
-  Widget _appbar() {
-  final mq = MediaQuery.of(context).size;
-  return InkWell(
-    onTap: () {},
-    child: StreamBuilder(
-      stream: APIs.getUserinfo(widget.user),
-      builder: (context, snapshot) {
-        final data = snapshot.data?.docs;
-        final _list = data?.map((e) => ChatUser.fromJson(e.data())).toList() ?? [];
 
-        return Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 5.0),
-          child: Row(
+
+Widget _appbar() {
+  final mq = MediaQuery.of(context).size; // Get screen size
+  final minProfileSize = 50.0; // Minimum size to prevent shrinking on high DPI screens
+
+  return Flexible(
+    child: InkWell(
+      onTap: () {},
+      child: StreamBuilder(
+        stream: APIs.getUserinfo(widget.user),
+        builder: (context, snapshot) {
+          final data = snapshot.data?.docs;
+          final _list = data?.map((e) => ChatUser.fromJson(e.data())).toList() ?? [];
+          final user = _list.isNotEmpty ? _list[0] : widget.user; // Use latest user data
+        
+          return Row(
             children: [
               IconButton(
                 onPressed: () {
@@ -158,58 +164,66 @@ void initState() {
                     MaterialPageRoute(builder: (_) => const MyHomePage()),
                   );
                 },
-                icon: const Icon(Icons.arrow_back),
+                icon: Icon(Icons.arrow_back, size: max(mq.width * 0.06, 22)),
               ),
               ClipRRect(
-                borderRadius: BorderRadius.circular(mq.height * 0.3),
+                borderRadius: BorderRadius.circular(mq.height * 0.5),
                 child: CachedNetworkImage(
-                  width: mq.height * 0.05,
-                  height: mq.height * 0.05,
-                  imageUrl: _list.isNotEmpty ? _list[0].image.toString() : widget.user.image.toString(),
-                  errorWidget: (context, url, error) => const CircleAvatar(
-                    child: Icon(CupertinoIcons.person),
+                  width: max(mq.height * 0.05, minProfileSize), // Adaptive size
+                  height: max(mq.height * 0.05, minProfileSize),
+                  imageUrl: user.image.toString(),
+                  errorWidget: (context, url, error) => CircleAvatar(
+                    radius: max(mq.height * 0.035, minProfileSize / 2),
+                    child: const Icon(CupertinoIcons.person),
                   ),
                 ),
               ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Text(
-                      _list.isNotEmpty ? _list[0].name.toString() : widget.user.name.toString(),
+              SizedBox(width: max(mq.width * 0.02, 6)), // Ensures minimum spacing
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  FittedBox( // Auto-scales text size
+                    fit: BoxFit.scaleDown,
+                    child: Text(
+                      user.name.toString(),
                       style: GoogleFonts.poppins(
-                        fontSize: mq.width * 0.045,
-                        color: Colors.black54,
-                        fontWeight: FontWeight.w500,
-                        
+                        fontSize: max(mq.width * 0.04, 14), // Minimum font size
+                        color: Colors.black87,
+                        fontWeight: FontWeight.w600,
                       ),
+                      
                     ),
-                    Text(
-                      widget.user.status == true
+                  ),
+                  
+                  FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Text(
+                      user.status == true
                           ? 'Online'
                           : MyDateUtil.getLastActiveTime(
                               context: context,
-                              last_seen: widget.user.lastSeen.toString(),
+                              last_seen: user.lastSeen.toString(),
                             ),
                       style: GoogleFonts.poppins(
-                        fontSize: mq.width * 0.035,
+                        fontSize: max(mq.width * 0.035, 12), // Adaptive size
                         fontWeight: FontWeight.w400,
                         color: Colors.black54,
-                       
                       ),
+                      
                     ),
-                  ],
-                ),
+                  ),
+                ],
               ),
             ],
-          ),
-        );
-      },
+          );
+        },
+      ),
     ),
   );
 }
+
+
 
 
   Widget _inputrow() {
