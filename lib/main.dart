@@ -1,4 +1,5 @@
 import 'package:chatting_application/screens/splash_screen.dart';
+import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
@@ -28,7 +29,7 @@ void main() async {
     print('Firebase initialized successfully');
 
     // Run the app
-    runApp(const MyApp());
+    runApp(const ProviderScope(child: MyApp()));
   } catch (e) {
     print('Error during initialization: $e');
   }

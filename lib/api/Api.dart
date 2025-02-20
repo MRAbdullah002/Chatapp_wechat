@@ -279,7 +279,8 @@ static Future<bool> checkExistingRequest(ChatUser recipient) async {
     return firestore
         .collection('friendRequests')
         .where('recipientId', isEqualTo: user.uid)
-        .where('status', isEqualTo: 'pending') // Get only pending requests
+        .where('status', isEqualTo: 'pending')
+        // Get only pending requests
         .snapshots()
         .map((snapshot) => snapshot.docs
             .map((doc) => FriendRequest.fromJson(doc.data()))
@@ -304,29 +305,53 @@ static Stream<List<ChatUser>> getAcceptedFriends() {
       ))
       .snapshots()
       .asyncMap((snapshot) async {
-        List<String> friendIds = [];
+        List<Map<String, dynamic>> friendsWithTimestamps = [];
 
         for (var doc in snapshot.docs) {
           String senderId = doc['senderId'].toString();
           String recipientId = doc['recipientId'].toString();
 
-          // Add only the other person in the friendship
-          if (senderId == user.uid) {
-            friendIds.add(recipientId);
-          } else {
-            friendIds.add(senderId);
+          // Get the friend's ID (the other person in the conversation)
+          String friendId = senderId == user.uid ? recipientId : senderId;
+
+          // Get the latest message for each friend conversation
+          final latestMessageSnapshot = await firestore
+              .collection('chats/${getConversationID(friendId)}/messages/')
+              .orderBy('sent', descending: true)
+              .limit(1)
+              .get();
+
+          if (latestMessageSnapshot.docs.isNotEmpty) {
+            final latestMessage = latestMessageSnapshot.docs.first;
+            friendsWithTimestamps.add({
+              'friendId': friendId,
+              'lastMessageTime': latestMessage['sent'], // Timestamp of the latest message
+            });
           }
         }
 
-        if (friendIds.isEmpty) return [];
+        // Sort friends based on the latest message timestamp
+        friendsWithTimestamps.sort((a, b) => b['lastMessageTime'].compareTo(a['lastMessageTime']));
 
-        // Fetch ChatUser data for friends
+        // Extract ordered friend IDs
+        List orderedFriendIds = friendsWithTimestamps.map((e) => e['friendId']).toList();
+
+        if (orderedFriendIds.isEmpty) return [];
+
+        // Fetch ChatUser data for friends in the correct order
         final friendsSnapshot = await firestore
             .collection('user')
-            .where('id', whereIn: friendIds)
+            .where('id', whereIn: orderedFriendIds)
             .get();
 
-        return friendsSnapshot.docs.map((doc) => ChatUser.fromJson(doc.data())).toList();
+        // Map the data while preserving order
+        List<ChatUser> friendsList = orderedFriendIds
+            .map((id) => friendsSnapshot.docs
+                .map((doc) => ChatUser.fromJson(doc.data()))
+                .firstWhere((friend) => friend.id == id))
+            .toList();
+
+        return friendsList;
       });
 }
 

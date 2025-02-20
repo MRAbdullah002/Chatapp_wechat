@@ -27,14 +27,26 @@ class _ChatscreenState extends State<Chatscreen> {
   final textcontroller = TextEditingController();
   final ScrollController _scrollController = ScrollController();
 
-  bool _emojishow = false;
-@override
-@override
-void initState() {
-  super.initState();
-  
-  
-  SystemChrome.setSystemUIOverlayStyle(
+  bool _emojishow = false,isUploading=false;
+
+ @override
+  void initState() {
+    super.initState();
+    APIs.getSelfInfo();
+    APIs.updateActiveStatus(true);
+
+    // Listen to app lifecycle changes for updating online status
+    SystemChannels.lifecycle.setMessageHandler((message) {
+      print('Lifecycle message: $message');
+      if (message.toString().contains('resume')) {
+        APIs.updateActiveStatus(true);
+      }
+      if (message.toString().contains('pause')) {
+        APIs.updateActiveStatus(false);
+      }
+      return Future.value(message);
+    });
+    SystemChrome.setSystemUIOverlayStyle(
     const SystemUiOverlayStyle(
       
       systemNavigationBarColor: Colors.white,
@@ -42,7 +54,7 @@ void initState() {
       statusBarIconBrightness: Brightness.dark, 
     ),
   );
-}
+  }
 
 
   @override
@@ -121,7 +133,17 @@ void initState() {
                     },
                   ),
                 ),
+                if(isUploading)
+               const Align(
+                alignment: Alignment.centerRight,
+                child:  Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 20.0,vertical: 8),
+                  child: CircularProgressIndicator(),
+                ),
+               ),
+              //  Send message
                 _inputrow(),
+
                 if (_emojishow)
                   SizedBox(
                     height: mq.height * .35,
@@ -272,7 +294,22 @@ Widget _appbar() {
                     ),
                   ),
                   IconButton(
-                    onPressed: () {},
+                    onPressed: () async {
+                       final ImagePicker picker = ImagePicker();
+
+                        final List<XFile> images =
+                            await picker.pickMultiImage();
+
+                        for (var i in images) {
+                           setState(() =>isUploading=true);
+                         await APIs.sendChatImage(widget.user,File(i.path));
+                        
+                          print('sucees ${i.path}');
+                          setState(() =>isUploading=false);
+                        }    
+                      
+                    },
+                    
                     icon: const Icon(
                       Icons.image,
                       color: Colors.blueAccent,
@@ -283,11 +320,14 @@ Widget _appbar() {
                       final ImagePicker picker = ImagePicker();
 
                         final XFile? image =
+                        
                             await picker.pickImage(source: ImageSource.camera);
+                            
                         if (image != null) {
                           print('sucees ${image.path}');
-                          
+                          setState(() =>isUploading=true);
                         await APIs.sendChatImage(widget.user,File(image.path));
+                        setState(() =>isUploading=false);
                         } else {
                           print('failed');
                         }
