@@ -34,8 +34,8 @@ void initState() {
   
   
   SystemChrome.setSystemUIOverlayStyle(
-    SystemUiOverlayStyle(
-      statusBarColor: Colors.transparent, 
+    const SystemUiOverlayStyle(
+      
       systemNavigationBarColor: Colors.white,
       systemNavigationBarIconBrightness: Brightness.dark,
       statusBarIconBrightness: Brightness.dark, 
@@ -52,6 +52,7 @@ void initState() {
       onTap: () => FocusScope.of(context).unfocus(),
       child: SafeArea(
         top: false,
+        // ignore: deprecated_member_use
         child: WillPopScope(
           onWillPop: () {
             if (_emojishow) {
@@ -70,7 +71,7 @@ void initState() {
               automaticallyImplyLeading: false,
               flexibleSpace: Padding(
                 padding:  EdgeInsets.only(top: mq.height*.03),
-                child: Flexible(child: _appbar()),
+                child: _appbar(),
               ),
             ),
             body: Column(
@@ -78,10 +79,11 @@ void initState() {
                 Expanded(
                   child: StreamBuilder(
                     stream: APIs.getAllmsg(widget.user),
+                    // ignore: non_constant_identifier_names
                     builder: (context, Snapshot) {
                       // Handle the different states for the StreamBuilder
                       if (Snapshot.connectionState == ConnectionState.waiting || Snapshot.connectionState == ConnectionState.none) {
-                        return Center(child: CircularProgressIndicator());
+                        return const Center(child:  CircularProgressIndicator());
                       }
 
                       if (Snapshot.connectionState == ConnectionState.active || Snapshot.connectionState == ConnectionState.done) {
@@ -143,82 +145,80 @@ void initState() {
 
 Widget _appbar() {
   final mq = MediaQuery.of(context).size; // Get screen size
-  final minProfileSize = 50.0; // Minimum size to prevent shrinking on high DPI screens
+  const minProfileSize = 50.0; // Minimum size to prevent shrinking on high DPI screens
 
-  return Flexible(
-    child: InkWell(
-      onTap: () {},
-      child: StreamBuilder(
-        stream: APIs.getUserinfo(widget.user),
-        builder: (context, snapshot) {
-          final data = snapshot.data?.docs;
-          final _list = data?.map((e) => ChatUser.fromJson(e.data())).toList() ?? [];
-          final user = _list.isNotEmpty ? _list[0] : widget.user; // Use latest user data
-        
-          return Row(
-            children: [
-              IconButton(
-                onPressed: () {
-                  Navigator.pushReplacement(
-                    context,
-                    MaterialPageRoute(builder: (_) => const MyHomePage()),
-                  );
-                },
-                icon: Icon(Icons.arrow_back, size: max(mq.width * 0.06, 22)),
-              ),
-              ClipRRect(
-                borderRadius: BorderRadius.circular(mq.height * 0.5),
-                child: CachedNetworkImage(
-                  width: max(mq.height * 0.05, minProfileSize), // Adaptive size
-                  height: max(mq.height * 0.05, minProfileSize),
-                  imageUrl: user.image.toString(),
-                  errorWidget: (context, url, error) => CircleAvatar(
-                    radius: max(mq.height * 0.035, minProfileSize / 2),
-                    child: const Icon(CupertinoIcons.person),
-                  ),
+  return InkWell(
+    onTap: () {},
+    child: StreamBuilder(
+      stream: APIs.getUserinfo(widget.user),
+      builder: (context, snapshot) {
+        final data = snapshot.data?.docs;
+        final _list = data?.map((e) => ChatUser.fromJson(e.data())).toList() ?? [];
+        final user = _list.isNotEmpty ? _list[0] : widget.user; // Use latest user data
+      
+        return Row(
+          children: [
+            IconButton(
+              onPressed: () {
+                Navigator.pushReplacement(
+                  context,
+                  MaterialPageRoute(builder: (_) => const MyHomePage()),
+                );
+              },
+              icon: Icon(Icons.arrow_back, size: max(mq.width * 0.06, 22)),
+            ),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(mq.height * 0.5),
+              child: CachedNetworkImage(
+                width: max(mq.height * 0.05, minProfileSize), // Adaptive size
+                height: max(mq.height * 0.05, minProfileSize),
+                imageUrl: user.image.toString(),
+                errorWidget: (context, url, error) => CircleAvatar(
+                  radius: max(mq.height * 0.035, minProfileSize / 2),
+                  child: const Icon(CupertinoIcons.person),
                 ),
               ),
-              SizedBox(width: max(mq.width * 0.02, 6)), // Ensures minimum spacing
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  FittedBox( // Auto-scales text size
-                    fit: BoxFit.scaleDown,
-                    child: Text(
-                      user.name.toString(),
-                      style: GoogleFonts.poppins(
-                        fontSize: max(mq.width * 0.04, 14), // Minimum font size
-                        color: Colors.black87,
-                        fontWeight: FontWeight.w600,
-                      ),
-                      
+            ),
+            SizedBox(width: max(mq.width * 0.02, 6)), // Ensures minimum spacing
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                FittedBox( // Auto-scales text size
+                  fit: BoxFit.scaleDown,
+                  child: Text(
+                    user.name.toString(),
+                    style: GoogleFonts.poppins(
+                      fontSize: max(mq.width * 0.04, 14), // Minimum font size
+                      color: Colors.black87,
+                      fontWeight: FontWeight.w600,
                     ),
+                    
                   ),
-                  
-                  FittedBox(
-                    fit: BoxFit.scaleDown,
-                    child: Text(
-                      user.status == true
-                          ? 'Online'
-                          : MyDateUtil.getLastActiveTime(
-                              context: context,
-                              last_seen: user.lastSeen.toString(),
-                            ),
-                      style: GoogleFonts.poppins(
-                        fontSize: max(mq.width * 0.035, 12), // Adaptive size
-                        fontWeight: FontWeight.w400,
-                        color: Colors.black54,
-                      ),
-                      
+                ),
+                
+                FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Text(
+                    user.status == true
+                        ? 'Online'
+                        : MyDateUtil.getLastActiveTime(
+                            context: context,
+                            last_seen: user.lastSeen.toString(),
+                          ),
+                    style: GoogleFonts.poppins(
+                      fontSize: max(mq.width * 0.035, 12), // Adaptive size
+                      fontWeight: FontWeight.w400,
+                      color: Colors.black54,
                     ),
+                    
                   ),
-                ],
-              ),
-            ],
-          );
-        },
-      ),
+                ),
+              ],
+            ),
+          ],
+        );
+      },
     ),
   );
 }
