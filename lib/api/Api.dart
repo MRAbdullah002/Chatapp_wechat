@@ -1,6 +1,7 @@
 
 
 import 'package:chatting_application/model/ChatUser.dart';
+import 'package:chatting_application/model/Inviteuser.dart';
 import 'package:chatting_application/model/messageUser.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -72,12 +73,12 @@ static Stream<QuerySnapshot<Map<String, dynamic>>> getUserinfo(ChatUser chatuser
   });
 }
 
-  static Future<void> updateUserinfo([String? imageUrl]) async {
+  static Future<void> updateUserinfo() async {
     firestore
         .collection('user')
         .doc(user.uid)
-        .update({'name': me.name, 'about': me.about, 'image': me.image});
-        print(imageUrl);
+        .update({'name': me.name, 'about': me.about, });
+        
   }
 
   // static Stream<QuerySnapshot<Map<String, dynamic>>> getAllmsg(ChatUser user) {
@@ -161,9 +162,136 @@ static Stream<QuerySnapshot> getlastsms(ChatUser chatUser) {
         .snapshots(); // Real-time updates
   }
 
-// send chat image
-// static Future<void>  sendChatImage (ChatUser chatUser, File file){
+ static Future<void> updateProfilePic([String? imageUrl]) async {
+    firestore
+        .collection('user')
+        .doc(user.uid)
+        .update({'image': me.image});
+        print(imageUrl);
+  }
 
-// }
 
+static Future<void> deleteChat(ChatUser user) async {
+  print("Attempting to delete chat for user: ${user.id}");
+  try {
+    final chatRef = FirebaseFirestore.instance.collection('chats');
+
+    // Find the chat document where the user is a participant
+    final querySnapshot = await chatRef
+        .where('participants', arrayContains: user.id)
+        .get();
+
+    if (querySnapshot.docs.isEmpty) {
+      print("No chat document found for ${user.name} (${user.id})");
+      return;
+    }
+
+    for (var doc in querySnapshot.docs) {
+      // Reference to messages subcollection
+      final messagesRef = chatRef.doc(doc.id).collection('messages');
+      
+      // Delete all messages in the chat
+      final messagesSnapshot = await messagesRef.get();
+      for (var message in messagesSnapshot.docs) {
+        await message.reference.delete();
+      }
+      print("Deleted all messages for chat: ${doc.id}");
+
+      // Delete the chat document
+      await doc.reference.delete();
+      print("Deleted chat document: ${doc.id}");
+    }
+  } catch (e) {
+    print("Error deleting chat: $e");
+  }
+}
+
+static Future<void> sendFriendRequest(ChatUser recipient) async {
+  final time = DateTime.now().millisecondsSinceEpoch.toString();
+
+  // Create a FriendRequest object
+  final request = FriendRequest(
+    senderName: recipient.name.toString(),
+    senderId: APIs.user.uid,
+    recipientId: recipient.id.toString(),
+    status: 'pending',
+    timestamp: time, recipantName: '',
+  );
+
+  // Add the request to the 'friendRequests' collection
+  await APIs.firestore.collection('friendRequests').add(request.toJson());
+  print("Friend request sent to ${recipient.name}");
+}
+
+static Future<void> acceptFriendRequest(String requestId) async {
+  // Update the request status to 'accepted'
+  await APIs.firestore.collection('friendRequests').doc(requestId).update({
+    'status': 'accepted',
+  });
+
+  // Add each other to the friends list
+  final requestSnapshot = await APIs.firestore.collection('friendRequests').doc(requestId).get();
+  final senderId = requestSnapshot['senderId'];
+  final recipientId = requestSnapshot['recipientId'];
+
+  // Add sender to recipient's friends list
+  await APIs.firestore.collection('users').doc(recipientId).update({
+    'friends': FieldValue.arrayUnion([senderId]),
+  });
+
+  // Add recipient to sender's friends list
+  await APIs.firestore.collection('users').doc(senderId).update({
+    'friends': FieldValue.arrayUnion([recipientId]),
+  });
+
+  print("Friend request accepted and added to friends list.");
+}
+
+// reject
+static Future<void> rejectFriendRequest(String requestId) async {
+  // Update the request status to 'rejected'
+  await APIs.firestore.collection('friendRequests').doc(requestId).update({
+    'status': 'rejected',
+  });
+
+  print("Friend request rejected.");
+}
+
+// checkExisting
+static Future<bool> checkExistingRequest(ChatUser recipient) async {
+  final snapshot = await APIs.firestore
+      .collection('friendRequests')
+      .where('senderId', isEqualTo: APIs.user.uid)
+      
+      .where('recipientId', isEqualTo: recipient.id)
+      .where('status', isEqualTo: 'pending')
+      .get();
+
+  return snapshot.docs.isNotEmpty;
+}
+
+
+
+ static Stream<List<FriendRequest>> getFriendInvites() {
+    return firestore
+        .collection('friendRequests')
+        .where('recipientId', isEqualTo: user.uid)
+        .where('status', isEqualTo: 'pending') // Get only pending requests
+        .snapshots()
+        .map((snapshot) => snapshot.docs
+            .map((doc) => FriendRequest.fromJson(doc.data()))
+            .toList());
+  }
+
+static Stream<List<ChatUser>> getFriends() {
+  return firestore
+      .collection('user')
+      .where('friends', arrayContains: user.uid) // Find users who have current user in their friends list
+      .snapshots()
+      .map((snapshot) =>
+          snapshot.docs.map((doc) => ChatUser.fromJson(doc.data())).toList());
+}
+
+
+ 
 }
