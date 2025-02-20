@@ -2,7 +2,6 @@ import 'package:chatting_application/api/Api.dart';
 import 'package:chatting_application/helper/cardofinvite.dart';
 import 'package:chatting_application/model/ChatUser.dart';
 import 'package:chatting_application/requests/accept.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -16,8 +15,8 @@ class Invite extends StatefulWidget {
 }
 
 class _InviteState extends State<Invite> {
-  List<ChatUser> _list = [];
-  List<ChatUser> _searchlist = [];
+  List<ChatUser> _list = []; // All users
+  List<ChatUser> _searchlist = []; // Filtered search results
   bool _issearching = false;
 
   @override
@@ -28,7 +27,6 @@ class _InviteState extends State<Invite> {
 
     // Listen to app lifecycle changes for updating online status
     SystemChannels.lifecycle.setMessageHandler((message) {
-      print('Lifecycle message: $message');
       if (message.toString().contains('resume')) {
         APIs.updateActiveStatus(true);
       }
@@ -39,13 +37,16 @@ class _InviteState extends State<Invite> {
     });
   }
 
-  // Function to search users in Firestore
-  Stream<QuerySnapshot> searchUsers(String query) {
-    return APIs.firestore
-        .collection('users')
-        .where('name', isGreaterThanOrEqualTo: query)
-        .where('name', isLessThanOrEqualTo: '$query\uf8ff')
-        .snapshots();
+  // Local search function (Filters _list)
+  void _searchUsers(String query) {
+    query = query.toLowerCase();
+
+    setState(() {
+      _searchlist = _list
+          .where((user) =>
+              user.name!.toLowerCase().contains(query) || user.email!.toLowerCase().contains(query))
+          .toList();
+    });
   }
 
   // Function to remove a user from the list
@@ -61,15 +62,15 @@ class _InviteState extends State<Invite> {
     return GestureDetector(
       onTap: () => FocusScope.of(context).unfocus(),
       child: WillPopScope(
-        onWillPop: () {
+        onWillPop: () async {
           if (_issearching) {
             setState(() {
-              _issearching = !_issearching;
+              _issearching = false;
+              _searchlist.clear();
             });
-            return Future.value(false);
-          } else {
-            return Future.value(true);
+            return false;
           }
+          return true;
         },
         child: Scaffold(
           appBar: AppBar(
@@ -83,19 +84,16 @@ class _InviteState extends State<Invite> {
             title: _issearching
                 ? TextField(
                     decoration: const InputDecoration(
-                        border: InputBorder.none, hintText: 'Name, Email...'),
+                        border: InputBorder.none, hintText: 'Search Name or Email...'),
                     autofocus: true,
-                    onChanged: (value) async {
+                    onChanged: (value) {
                       if (value.isNotEmpty) {
-                        final snapshot = await searchUsers(value).first;
-                        _searchlist = snapshot.docs
-                            .map((doc) => ChatUser.fromJson(
-                                doc.data() as Map<String, dynamic>))
-                            .toList();
-                        setState(() {});
+                        _searchUsers(value);
                       } else {
-                        _searchlist.clear();
-                        setState(() {});
+                        setState(() {
+                          _issearching = false;
+                          _searchlist.clear();
+                        });
                       }
                     },
                   )
@@ -134,7 +132,7 @@ class _InviteState extends State<Invite> {
           body: Container(
             color: Colors.white,
             child: StreamBuilder(
-              stream: APIs.getAllUser().distinct(),
+              stream: APIs.getAllUser(),
               builder: (context, snapshot) {
                 switch (snapshot.connectionState) {
                   case ConnectionState.waiting:
@@ -153,24 +151,20 @@ class _InviteState extends State<Invite> {
                         ),
                       ),
                     );
+
                   case ConnectionState.active:
                   case ConnectionState.done:
                     final data = snapshot.data?.docs;
-                    _list = data
-                            ?.map(
-                              (e) => ChatUser.fromJson(
-                                e.data(),
-                              ),
-                            )
-                            .toList() ??
-                        [];
-                    if (_list.isNotEmpty) {
+                    _list = data?.map((e) => ChatUser.fromJson(e.data())).toList() ?? [];
+
+                    // If searching, use _searchlist; otherwise, use _list
+                    final displayList = _issearching ? _searchlist : _list;
+
+                    if (displayList.isNotEmpty) {
                       return ListView.builder(
-                        itemCount:
-                            _issearching ? _searchlist.length : _list.length,
+                        itemCount: displayList.length,
                         itemBuilder: (context, index) {
-                          final user =
-                              _issearching ? _searchlist[index] : _list[index];
+                          final user = displayList[index];
                           return CarduserInvite(
                             user: user,
                             showStatus: true, // Show status
@@ -180,10 +174,11 @@ class _InviteState extends State<Invite> {
                       );
                     } else {
                       return Center(
-                          child: Text(
-                        'No connection found',
-                        style: GoogleFonts.poppins(fontSize: 25),
-                      ));
+                        child: Text(
+                          'No users found',
+                          style: GoogleFonts.poppins(fontSize: 22),
+                        ),
+                      );
                     }
                 }
               },

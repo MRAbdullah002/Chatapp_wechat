@@ -291,6 +291,41 @@ static Stream<List<ChatUser>> getFriends() {
       .map((snapshot) =>
           snapshot.docs.map((doc) => ChatUser.fromJson(doc.data())).toList());
 }
+static Stream<List<ChatUser>> getAcceptedFriends() {
+  return firestore
+      .collection('friendRequests')
+      .where('status', isEqualTo: 'accepted') 
+      .where(Filter.or(
+        Filter('recipientId', isEqualTo: user.uid), // Current user is the recipient
+        Filter('senderId', isEqualTo: user.uid) // Current user is the sender
+      ))
+      .snapshots()
+      .asyncMap((snapshot) async {
+        List<String> friendIds = [];
+
+        for (var doc in snapshot.docs) {
+          String senderId = doc['senderId'].toString();
+          String recipientId = doc['recipientId'].toString();
+
+          // Add only the other person in the friendship
+          if (senderId == user.uid) {
+            friendIds.add(recipientId);
+          } else {
+            friendIds.add(senderId);
+          }
+        }
+
+        if (friendIds.isEmpty) return [];
+
+        // Fetch ChatUser data for friends
+        final friendsSnapshot = await firestore
+            .collection('user')
+            .where('id', whereIn: friendIds)
+            .get();
+
+        return friendsSnapshot.docs.map((doc) => ChatUser.fromJson(doc.data())).toList();
+      });
+}
 
 
  

@@ -133,8 +133,8 @@ class _MyHomePageState extends State<MyHomePage> {
           ),
           body: Container(
             color: Colors.white,
-            child: StreamBuilder(
-  stream: APIs.getAllUser().distinct(),
+            child:StreamBuilder<List<ChatUser>>(
+  stream: APIs.getAcceptedFriends(),
   builder: (context, snapshot) {
     switch (snapshot.connectionState) {
       case ConnectionState.waiting:
@@ -155,23 +155,14 @@ class _MyHomePageState extends State<MyHomePage> {
         );
       case ConnectionState.active:
       case ConnectionState.done:
-        final data = snapshot.data?.docs;
-        _list = data
-                ?.map(
-                  (e) => ChatUser.fromJson(
-                    e.data(),
-                  ),
-                )
-                .toList() ??
-            [];
+        final data = snapshot.data; // ✅ No need for `.docs`
+        _list = data ?? [];
+
         if (_list.isNotEmpty) {
           return ListView.builder(
-            itemCount:
-                _issearching ? _searchlist.length : _list.length,
+            itemCount: _issearching ? _searchlist.length : _list.length,
             itemBuilder: (context, index) {
-              final user = _issearching
-                  ? _searchlist[index]
-                  : _list[index];
+              final user = _issearching ? _searchlist[index] : _list[index];
               return GestureDetector(
                 onLongPress: () => _showDeleteDialog(user),
                 child: CarduserChat(
@@ -183,14 +174,16 @@ class _MyHomePageState extends State<MyHomePage> {
           );
         } else {
           return Center(
-              child: Text(
-            'No connection found',
-            style: GoogleFonts.poppins(fontSize: 25),
-          ));
+            child: Text(
+              'No connection found',
+              style: GoogleFonts.poppins(fontSize: 25),
+            ),
+          );
         }
     }
   },
-),
+)
+
           ),
         ),
       ),
