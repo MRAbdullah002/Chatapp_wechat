@@ -97,72 +97,85 @@ class _FriendRequestCardState extends State<FriendRequestCard> {
 
   // Accept the friend request
   Future<void> _acceptFriendRequest() async {
-    try {
-      final snapshot = await APIs.firestore
+  try {
+    // Fetch the request document
+    final snapshot = await APIs.firestore
+        .collection('friendRequests')
+        .where('senderId', isEqualTo: widget.request.senderId)
+        .where('recipientId', isEqualTo: APIs.user.uid)
+        .get();
+
+    if (snapshot.docs.isNotEmpty) {
+      final requestId = snapshot.docs.first.id;
+
+      // Update status to accepted
+      await APIs.firestore.collection('friendRequests').doc(requestId).update({
+        'status': 'accepted',
+      });
+
+      // Add each other as friends
+      await APIs.firestore.collection('users').doc(APIs.user.uid).update({
+        'friends': FieldValue.arrayUnion([widget.request.senderId]),
+      });
+
+      await APIs.firestore.collection('users').doc(widget.request.senderId).update({
+        'friends': FieldValue.arrayUnion([APIs.user.uid]),
+      });
+
+      // Now remove the reverse friend request (if it exists)
+      final reverseRequest = await APIs.firestore
           .collection('friendRequests')
-          .where('senderId', isEqualTo: widget.request.senderId)
-          .where('recipientId', isEqualTo: APIs.user.uid)
+          .where('senderId', isEqualTo: APIs.user.uid)
+          .where('recipientId', isEqualTo: widget.request.senderId)
           .get();
 
-      if (snapshot.docs.isNotEmpty) {
-        final requestId = snapshot.docs.first.id;
-        await APIs.firestore.collection('friendRequests').doc(requestId).update({
-          'status': 'accepted',
-        });
-
-        // Add each other as friends
-        await APIs.firestore.collection('users').doc(APIs.user.uid).update({
-          'friends': FieldValue.arrayUnion([widget.request.senderId]),
-        });
-
-        await APIs.firestore.collection('users').doc(widget.request.senderId).update({
-          'friends': FieldValue.arrayUnion([APIs.user.uid]),
-        });
-
-        setState(() {
-          _requestStatus = 'accepted';
-        });
-
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('You are now friends with ${widget.request.senderName}')),
-        );
+      if (reverseRequest.docs.isNotEmpty) {
+        await APIs.firestore.collection('friendRequests').doc(reverseRequest.docs.first.id).delete();
       }
-    } catch (e) {
+
+      setState(() {
+        _requestStatus = 'accepted';
+      });
+
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error accepting request: $e')),
+        SnackBar(content: Text('You are now friends with ${widget.request.senderName}')),
       );
     }
+  } catch (e) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Error accepting request: $e')),
+    );
   }
+}
 
-  // Decline the friend request
+
   Future<void> _declineFriendRequest() async {
-    try {
-      final snapshot = await APIs.firestore
-          .collection('friendRequests')
-          .where('senderId', isEqualTo: widget.request.senderId)
-          .where('recipientId', isEqualTo: APIs.user.uid)
-          .get();
+  try {
+    final snapshot = await APIs.firestore
+        .collection('friendRequests')
+        .where('senderId', isEqualTo: widget.request.senderId)
+        .where('recipientId', isEqualTo: APIs.user.uid)
+        .get();
 
-      if (snapshot.docs.isNotEmpty) {
-        final requestId = snapshot.docs.first.id;
-        await APIs.firestore.collection('friendRequests').doc(requestId).update({
-          'status': 'rejected',
-        });
+    if (snapshot.docs.isNotEmpty) {
+      final requestId = snapshot.docs.first.id;
 
-        setState(() {
-          _requestStatus = 'rejected';
-        });
+      // Remove the friend request from Firestore
+      await APIs.firestore.collection('friendRequests').doc(requestId).delete();
 
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Friend request declined from ${widget.request.senderName}')),
-        );
+      setState(() {
+        _requestStatus = 'request'; // Reset UI to allow new requests
+      });
 
-        widget.onRemove();
-      }
-    } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error declining request: $e')),
+        SnackBar(content: Text('Friend request declined from ${widget.request.senderName}')),
       );
     }
+  } catch (e) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Error declining request: $e')),
+    );
   }
+}
+
 }
