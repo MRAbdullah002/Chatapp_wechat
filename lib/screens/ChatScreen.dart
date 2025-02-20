@@ -1,5 +1,5 @@
+import 'dart:io';
 import 'dart:math';
-
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:chatting_application/api/Api.dart';
 import 'package:chatting_application/helper/message_.dart';
@@ -12,6 +12,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:image_picker/image_picker.dart';
 
 class Chatscreen extends StatefulWidget {
   const Chatscreen({super.key, required this.user});
@@ -82,11 +83,7 @@ void initState() {
                     // ignore: non_constant_identifier_names
                     builder: (context, Snapshot) {
                       // Handle the different states for the StreamBuilder
-                      if (Snapshot.connectionState == ConnectionState.waiting || Snapshot.connectionState == ConnectionState.none) {
-                        return const Center(child:  CircularProgressIndicator());
-                      }
-
-                      if (Snapshot.connectionState == ConnectionState.active || Snapshot.connectionState == ConnectionState.done) {
+                      
                         final data = Snapshot.data?.docs;
 
                         if (data == null || data.isEmpty) {
@@ -118,9 +115,9 @@ void initState() {
                             return MessageCard(message: _list[index]);
                           },
                         );
-                      }
+                      
 
-                      return Center(child: Text('No messages found.', style: GoogleFonts.poppins(fontSize: 26)));
+                      
                     },
                   ),
                 ),
@@ -184,6 +181,7 @@ Widget _appbar() {
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
+                const SizedBox(height: 3),
                 FittedBox( // Auto-scales text size
                   fit: BoxFit.scaleDown,
                   child: Text(
@@ -196,7 +194,7 @@ Widget _appbar() {
                     
                   ),
                 ),
-                
+                const SizedBox(height: 3,),
                 FittedBox(
                   fit: BoxFit.scaleDown,
                   child: Text(
@@ -281,7 +279,19 @@ Widget _appbar() {
                     ),
                   ),
                   IconButton(
-                    onPressed: () {},
+                    onPressed: () async {
+                      final ImagePicker picker = ImagePicker();
+
+                        final XFile? image =
+                            await picker.pickImage(source: ImageSource.camera);
+                        if (image != null) {
+                          print('sucees ${image.path}');
+                          
+                        await APIs.sendChatImage(widget.user,File(image.path));
+                        } else {
+                          print('failed');
+                        }
+                    },
                     icon: const Icon(
                       Icons.camera_alt_outlined,
                       color: Colors.blueAccent,
@@ -294,7 +304,7 @@ Widget _appbar() {
           MaterialButton(
             onPressed: () {
               if (textcontroller.text.isNotEmpty) {
-                APIs.sendMessage(widget.user, textcontroller.text);
+                APIs.sendMessage(widget.user, textcontroller.text,Type.text);
                 textcontroller.clear();
                 _scrollToBottom(_scrollController);
               } else {

@@ -1,17 +1,20 @@
 
 
+import 'dart:io';
+
 import 'package:chatting_application/model/ChatUser.dart';
 import 'package:chatting_application/model/Inviteuser.dart';
 import 'package:chatting_application/model/messageUser.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_auth/firebase_auth.dart' as firebase_auth;
+import 'package:supabase_flutter/supabase_flutter.dart' ;
 
 class APIs {
-  static FirebaseAuth auth = FirebaseAuth.instance;
+  static firebase_auth.FirebaseAuth auth = firebase_auth.FirebaseAuth.instance;
   static late ChatUser me;
 
   static FirebaseFirestore firestore = FirebaseFirestore.instance;
-  static User get user => auth.currentUser!;
+  static firebase_auth.User get user => auth.currentUser!;
   static Future<bool> userExist() async {
     return (await firestore.collection('user').doc(user.uid).get()).exists;
   }
@@ -88,7 +91,7 @@ static Stream<QuerySnapshot<Map<String, dynamic>>> getUserinfo(ChatUser chatuser
   static String getConversationID(String ID) => user.uid.hashCode <= ID.hashCode
       ? '${user.uid}_$ID'
       : '${ID}_${user.uid}';
-  static Future<void> sendMessage(ChatUser chatuser, String msg) async {
+  static Future<void> sendMessage(ChatUser chatuser, String msg,Type type) async {
     try {
       final time = DateTime.now().millisecondsSinceEpoch.toString();
 
@@ -96,7 +99,7 @@ static Stream<QuerySnapshot<Map<String, dynamic>>> getUserinfo(ChatUser chatuser
       final MessageUser message = MessageUser(
         msg: msg,
         toID: chatuser.id,
-        type: Type.text, 
+        type: type, 
         formID: user.uid,
         read: '',
         sent: time,
@@ -326,6 +329,41 @@ static Stream<List<ChatUser>> getAcceptedFriends() {
         return friendsSnapshot.docs.map((doc) => ChatUser.fromJson(doc.data())).toList();
       });
 }
+
+
+static Future<void> sendChatImage(ChatUser chatUser, File file) async {
+  final supabase = Supabase.instance.client;
+  final ext = file.path.split('.').last; // Get file extension
+
+  final fileName =
+      '${getConversationID(chatUser.id.toString())}_${DateTime.now().millisecondsSinceEpoch}.$ext';
+  final filePath = 'camera_image/$fileName';
+
+  try {
+    // Read file as bytes
+    final fileBytes = await file.readAsBytes();
+
+    // Upload file to Supabase Storage
+    await supabase.storage.from('camera_image').uploadBinary(
+      filePath,
+      fileBytes,
+      fileOptions: const FileOptions(cacheControl: '3600', upsert: true),
+    );
+
+    // Get public URL of the uploaded image
+    final imageURL = supabase.storage.from('camera_image').getPublicUrl(filePath);
+
+    // Send the image message
+    await sendMessage(chatUser, imageURL, Type.image);
+
+    print('Image uploaded successfully: $imageURL');
+  } catch (e, stackTrace) {
+    print('Image upload failed: $e');
+    print(stackTrace);
+  }
+}
+
+
 
 
  
