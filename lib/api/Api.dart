@@ -59,7 +59,37 @@ class APIs {
     return firestore
         .collection('user')
         .where('id', isNotEqualTo: user.uid)
-        .snapshots();}
+        .snapshots();
+}
+
+
+static Stream<List<Map<String, dynamic>>> getAllUserWithStatus() {
+  return firestore
+      .collection('user')
+      .where('id', isNotEqualTo: user.uid)
+      .snapshots()
+      .asyncMap((usersSnapshot) async {
+    final users = usersSnapshot.docs;
+    final updatedUsers = await Future.wait(users.map((userDoc) async {
+      final userId = userDoc.id;
+      final statusSnapshot = await firestore
+          .collection('friendRequests')
+          .where('senderId', isEqualTo: userId)
+          .where('recipientId', isEqualTo: user.uid)
+          .get();
+
+      final friendRequestStatus = statusSnapshot.docs.isNotEmpty
+          ? statusSnapshot.docs.first['status']
+          : 'none';
+
+      return userDoc.data()
+        ..['friendRequestStatus'] = friendRequestStatus; // Add friend request status
+    }));
+
+    return updatedUsers; // Return the list of users with their statuses
+  });
+}
+
 static Stream<QuerySnapshot<Map<String, dynamic>>> getUserinfo(ChatUser chatuser) {
   return firestore
       .collection('user')
@@ -372,6 +402,7 @@ static Stream<List<ChatUser>> getAcceptedFriends() {
       });
 }
 
+
 static Stream<List<ChatUser>> getFilteredFriends() {
   return firestore
       .collection('friendRequests')
@@ -481,6 +512,36 @@ static Future<bool> checkChatExists(String userId) async {
       .get();
   return doc.exists;  // Returns true if the document still exists
 }
+
+
+  static Future<bool> hasUserUpdatedRequest(String senderId) async {
+    final snapshot = await firestore
+        .collection('friendRequests')
+        .where('senderId', isEqualTo: senderId)
+        .where('recipientId', isEqualTo: user.uid)
+        .get();
+
+    if (snapshot.docs.isNotEmpty) {
+      final requestStatus = snapshot.docs.first['status'];
+      return requestStatus == 'accepted' || requestStatus == 'rejected';
+    }
+    return false;
+  }
+
+
+
+static Future<String> checkFriendRequestStatus(String recipientId) async {
+    final snapshot = await firestore
+        .collection('friendRequests')
+        .where('senderId', isEqualTo: user.uid)
+        .where('recipientId', isEqualTo: recipientId)
+        .get();
+
+    if (snapshot.docs.isNotEmpty) {
+      return snapshot.docs.first['status']; // Return the current status
+    }
+    return 'none'; // No request found
+  }
 
  
 }

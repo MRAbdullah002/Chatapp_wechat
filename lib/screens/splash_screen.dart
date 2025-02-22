@@ -42,7 +42,7 @@ void initState() {
       appBar: AppBar(
         backgroundColor: Colors.white,
         title: Text(
-          "We Chat",
+          "",
           style: GoogleFonts.nunito(
             letterSpacing: 2,
             color: Colors.black,
@@ -63,29 +63,41 @@ void initState() {
                 Container(
                   color: Colors.white,
                 ),
+                 Positioned(
+                  top: mq.height * .20,
+                  width: mq.width * .5,
+                  
+                  right: mq.width * .16,
+                  child: Text('We Chat',
+                      style: GoogleFonts.nunito(
+                        fontSize: 36,
+                        letterSpacing: 2,
+                        fontWeight: FontWeight.w800,
+                      )),
+                ),
                 Positioned(
-                  top: mq.height * .15,
+                  top: mq.height * .35,
                   width: mq.width * .5,
                   right: mq.width * .25,
                   child: Image.asset(
                     "assets/images/wechat.png",
                   ),
                 ),
-                Positioned(
-                  bottom: mq.height * .15,
-                  width: mq.width * .8,
-                  left: mq.width * .1,
-                  child: Center(
-                    child: Text(
-                      "Made By OUR Group",
-                      style: GoogleFonts.nunito(
-                        fontSize: 26,
-                        letterSpacing: 2,
-                        fontWeight: FontWeight.w400,
-                      ),
-                    ),
-                  ),
-                ),
+                // Positioned(
+                //   bottom: mq.height * .15,
+                //   width: mq.width * .8,
+                //   left: mq.width * .1,
+                //   child: Center(
+                //     child: Text(
+                //       "Made By OUR Group",
+                //       style: GoogleFonts.nunito(
+                //         fontSize: 26,
+                //         letterSpacing: 2,
+                //         fontWeight: FontWeight.w400,
+                //       ),
+                //     ),
+                //   ),
+                // ),
               ],
             ),
           ),

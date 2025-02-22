@@ -8,6 +8,7 @@ import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:lottie/lottie.dart';
 import 'package:page_transition/page_transition.dart';
+import 'package:shimmer/shimmer.dart';
 
 class MyHomePage extends StatefulWidget {
   const MyHomePage({super.key});
@@ -25,8 +26,10 @@ class _MyHomePageState extends State<MyHomePage> {
   void initState() {
     super.initState();
     APIs.getSelfInfo();
-    APIs.updateActiveStatus(true);
     APIs.getAcceptedFriends();
+    APIs.updateActiveStatus(true);
+    
+    
 
     // Listen to app lifecycle changes for updating online status
     SystemChannels.lifecycle.setMessageHandler((message) {
@@ -38,15 +41,15 @@ class _MyHomePageState extends State<MyHomePage> {
         APIs.updateActiveStatus(false);
       }
       return Future.value(message);
-    });
+    },);
   }
 
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
       onTap: () => FocusScope.of(context).unfocus(),
-      // ignore: deprecated_member_use
       child: WillPopScope(
+        
         onWillPop: () {
           if (_issearching) {
             setState(() {
@@ -58,21 +61,37 @@ class _MyHomePageState extends State<MyHomePage> {
           }
         },
         child: Scaffold(
+          backgroundColor: Colors.white,
           appBar: AppBar(
             backgroundColor: Colors.white,
             scrolledUnderElevation: 0,
-            leading: const Icon(
-              Icons.home_outlined,
-              color: Colors.black,
-              size: 26,
+            surfaceTintColor: Colors.white,
+            leading: IconButton(
+
+              icon: const Icon(Icons.home_outlined),
+              onPressed: (){
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (BuildContext _) =>
+                        const MyHomePage(),
+                  ),
+                );
+              },
             ),
             title: _issearching
                 ? TextField(
                     decoration: const InputDecoration(
                         border: InputBorder.none, hintText: 'Name, Email...'),
                     autofocus: true,
-                    onChanged: (value) {
-                      _searchlist.clear();
+                    onChanged: (value) async {
+                      setState(() {
+                        _searchlist.clear();
+                      });
+
+                      // Simulate a delay for searching
+                      await Future.delayed(const Duration(milliseconds: 500));
+
                       for (var i in _list) {
                         if (i.name!
                                 .toLowerCase()
@@ -135,62 +154,91 @@ class _MyHomePageState extends State<MyHomePage> {
               child: const Icon(Icons.person_add_alt_1_outlined),
             ),
           ),
-          body: Container(
-              color: Colors.white,
-              child: StreamBuilder<List<ChatUser>>(
-                stream: APIs.getAcceptedFriends(),
-                builder: (context, snapshot) {
-                  final data = snapshot.data; // ✅ No need for `.docs`
-                  _list = data ?? [];
-
-                  if (_list.isNotEmpty) {
-                    return ListView.builder(
-                      itemCount:
-                          _issearching ? _searchlist.length : _list.length,
-                      itemBuilder: (context, index) {
-                        final user =
-                            _issearching ? _searchlist[index] : _list[index];
-                        return GestureDetector(
-                          onLongPress: () => _showDeleteDialog(user),
-                          child: CarduserChat(
-                            user: user,
-                            showStatus: true, // Show status
-                          ),
-                        );
-                      },
-                    );
-                  } else {
-                    return Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        crossAxisAlignment: CrossAxisAlignment.center,
-                        children: [
-                          Text(
-                            'Make New Friends',
-                            style: GoogleFonts.poppins(fontSize: 25),
-                          ),
-                          Lottie.asset('assets/images/friends.json'),
-                          MaterialButton(
-                            
-                            onPressed: () {
-                              Navigator.push(
-                                context,
-                                PageTransition(
-                                  type: PageTransitionType.fade,
-                                  child: const Invite(),
-                                ),
-                              );
-                            },
-                            elevation: 5,
-                            color: Colors.blueGrey,
-                            child: const Text('Invite',style: TextStyle(fontWeight: FontWeight.w700,fontSize: 20,color: Colors.white,letterSpacing: 2),),
-                          ),
-                        ],
-                      ),
-                    );
-                  }
-                },
-              )),
+          body: Column(
+            children: [
+              const Divider(
+                thickness: 2,
+                height: 3,
+              ),
+              Expanded(
+                child: StreamBuilder<List<ChatUser>>(
+                  stream: APIs.getAcceptedFriends(),
+                  builder: (context, snapshot) {
+                    if (snapshot.connectionState == ConnectionState.waiting) {
+                      // Show shimmer effect while fetching data
+                      return _buildShimmerEffect();
+                    } else if (snapshot.hasError) {
+                      // Show error message
+                      return Center(
+                        child: Text('Error: ${snapshot.error}'),
+                      );
+                    } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
+                      // Show empty state UI
+                      return Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          crossAxisAlignment: CrossAxisAlignment.center,
+                          children: [
+                            Text(
+                              'Make New Friends',
+                              style: GoogleFonts.poppins(fontSize: 25),
+                            ),
+                            Lottie.asset('assets/images/friends.json'),
+                            MaterialButton(
+                              onPressed: () {
+                                Navigator.push(
+                                  context,
+                                  PageTransition(
+                                    type: PageTransitionType.fade,
+                                    child: const Invite(),
+                                  ),
+                                );
+                              },
+                              elevation: 5,
+                              color: Colors.blueGrey,
+                              child: const Text(
+                                'Invite',
+                                style: TextStyle(
+                                    fontWeight: FontWeight.w700,
+                                    fontSize: 20,
+                                    color: Colors.white,
+                                    letterSpacing: 2),
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    } else {
+                      // Data is available
+                      final data = snapshot.data;
+                      _list = data ?? [];
+                
+                      if (_issearching && _searchlist.isEmpty) {
+                        // Show shimmer effect while searching
+                        return _buildShimmerEffect();
+                      }
+                
+                      return ListView.builder(
+                        itemCount:
+                            _issearching ? _searchlist.length : _list.length,
+                        itemBuilder: (context, index) {
+                          final user =
+                              _issearching ? _searchlist[index] : _list[index];
+                          return GestureDetector(
+                            onLongPress: () => _showDeleteDialog(user),
+                            child: CarduserChat(
+                              user: user,
+                              showStatus: true, // Show status
+                            ),
+                          );
+                        },
+                      );
+                    }
+                  },
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -240,6 +288,53 @@ class _MyHomePageState extends State<MyHomePage> {
           ],
         );
       },
+    );
+  }
+
+  Widget _buildShimmerEffect() {
+    return Shimmer.fromColors(
+      baseColor: Colors.black.withOpacity(0.1), // Base color with opacity
+      highlightColor: Colors.grey.withOpacity(0.2), // Highlight color with opacity
+      child: ListView.builder(
+        itemCount: 15, // Number of shimmering items
+        itemBuilder: (context, index) {
+          return Padding(
+            padding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 16.0),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  width: 50,
+                  height: 50,
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(25),
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Container(
+                        width: double.infinity,
+                        height: 16,
+                        color: Colors.white,
+                      ),
+                      const SizedBox(height: 8),
+                      Container(
+                        width: double.infinity,
+                        height: 12,
+                        color: Colors.white,
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          );
+        },
+      ),
     );
   }
 }

@@ -10,7 +10,7 @@ class CarduserInvite extends StatefulWidget {
     super.key,
     required this.user,
     required this.showStatus,
-    required this.onRemove,
+    required this.onRemove, required String status,
   });
 
   final ChatUser user;
@@ -101,7 +101,7 @@ class _CarduserInviteState extends State<CarduserInvite> {
         return TextButton(
           style: TextButton.styleFrom(
             backgroundColor: Colors.lightBlueAccent,
-            padding: EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
           ),
           child: const Text("Message", style: TextStyle(color: Colors.white)),
@@ -127,11 +127,11 @@ class _CarduserInviteState extends State<CarduserInvite> {
             TextButton(
               style: TextButton.styleFrom(
                 backgroundColor: Colors.lightBlueAccent,
-                padding: EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
               ),
-              child: const Text('Request', style: TextStyle(color: Colors.white)),
               onPressed: _sendFriendRequest,
+              child:  const Text('Request', style: TextStyle(color: Colors.white)),
             ),
             const SizedBox(width: 5),
             // Reject Button
@@ -152,26 +152,38 @@ class _CarduserInviteState extends State<CarduserInvite> {
     }
   }
 
-  // Send a friend request
-  Future<void> _sendFriendRequest() async {
-    setState(() {
-      _requestStatus = 'pending';
-    });
+  
 
-    try {
-      await APIs.sendFriendRequest(widget.user);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Friend request sent to ${widget.user.name}')),
-      );
-    } catch (e) {
-      setState(() {
-        _requestStatus = 'none';
-      });
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to send friend request: $e')),
-      );
-    }
+  // Send a friend request
+ Future<void> _sendFriendRequest() async {
+  String status = await APIs.checkFriendRequestStatus(widget.user.id.toString());
+
+  if (status == 'pending' || status == 'accepted') {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content:  Text('Friend request already sent or accepted.')),
+    );
+    return;
   }
+
+  setState(() {
+    _requestStatus = 'pending';
+  });
+
+  try {
+    await APIs.sendFriendRequest(widget.user);
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Friend request sent to ${widget.user.name}')),
+    );
+  } catch (e) {
+    setState(() {
+      _requestStatus = 'none';
+    });
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Failed to send friend request: $e')),
+    );
+  }
+}
+
 
   // Accept a friend request
  

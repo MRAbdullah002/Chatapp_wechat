@@ -6,6 +6,7 @@ import 'package:chatting_application/model/ChatUser.dart';
 import 'package:chatting_application/screens/login.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:image_picker/image_picker.dart';
@@ -36,6 +37,21 @@ class _ProfileScreenState extends State<ProfileScreen> {
     _initialName = widget.user.name;
     _initialAbout = widget.user.about;
     _initialImage = widget.user.image;
+    APIs.updateActiveStatus(true);
+    
+    
+
+    // Listen to app lifecycle changes for updating online status
+    SystemChannels.lifecycle.setMessageHandler((message) {
+      print('Lifecycle message: $message');
+      if (message.toString().contains('resume')) {
+        APIs.updateActiveStatus(true);
+      }
+      if (message.toString().contains('pause')) {
+        APIs.updateActiveStatus(false);
+      }
+      return Future.value(message);
+    },);
   }
 
   @override

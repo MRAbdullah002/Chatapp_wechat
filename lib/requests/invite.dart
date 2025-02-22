@@ -2,10 +2,11 @@ import 'package:chatting_application/api/Api.dart';
 import 'package:chatting_application/helper/cardofinvite.dart';
 import 'package:chatting_application/model/ChatUser.dart';
 import 'package:chatting_application/requests/accept.dart';
+import 'package:chatting_application/screens/myhomepage.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:loading_indicator/loading_indicator.dart';
+import 'package:shimmer/shimmer.dart';
 
 class Invite extends StatefulWidget {
   const Invite({super.key});
@@ -24,6 +25,7 @@ class _InviteState extends State<Invite> {
     super.initState();
     APIs.getSelfInfo();
     APIs.updateActiveStatus(true);
+    APIs.getAllUser();
 
     // Listen to app lifecycle changes for updating online status
     SystemChannels.lifecycle.setMessageHandler((message) {
@@ -73,13 +75,23 @@ class _InviteState extends State<Invite> {
           return true;
         },
         child: Scaffold(
+          backgroundColor: Colors.white,
           appBar: AppBar(
             backgroundColor: Colors.white,
+            surfaceTintColor: Colors.white,
             scrolledUnderElevation: 0,
-            leading: const Icon(
-              Icons.home_outlined,
-              color: Colors.black,
-              size: 26,
+            leading:IconButton(
+
+              icon: const Icon(Icons.home_outlined),
+              onPressed: (){
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (BuildContext _) =>
+                        const MyHomePage(),
+                  ),
+                );
+              },
             ),
             title: _issearching
                 ? TextField(
@@ -129,62 +141,107 @@ class _InviteState extends State<Invite> {
               ),
             ],
           ),
-          body: Container(
-            color: Colors.white,
-            child: StreamBuilder(
-              stream: APIs.getAllUser(),
-              builder: (context, snapshot) {
-                switch (snapshot.connectionState) {
-                  case ConnectionState.waiting:
-                  case ConnectionState.none:
-                    return const Center(
-                      child: SizedBox(
-                        height: 100,
-                        width: 50,
-                        child: LoadingIndicator(
-                          indicatorType: Indicator.ballPulse,
-                          colors: [
-                            Color.fromARGB(255, 54, 120, 244),
-                            Color.fromARGB(255, 34, 74, 255),
-                            Colors.cyan
-                          ],
-                        ),
-                      ),
-                    );
-
-                  case ConnectionState.active:
-                  case ConnectionState.done:
-                    final data = snapshot.data?.docs;
-                    _list = data?.map((e) => ChatUser.fromJson(e.data())).toList() ?? [];
-
-                    // If searching, use _searchlist; otherwise, use _list
-                    final displayList = _issearching ? _searchlist : _list;
-
-                    if (displayList.isNotEmpty) {
-                      return ListView.builder(
-                        itemCount: displayList.length,
-                        itemBuilder: (context, index) {
-                          final user = displayList[index];
-                          return CarduserInvite(
-                            user: user,
-                            showStatus: true, // Show status
-                            onRemove: () => _removeUser(user),
+          body: Column(
+            children: [
+              const Divider(
+                thickness: 2,
+                height: 3,
+              ),
+              Expanded(
+                child: StreamBuilder(
+                  stream: APIs.getAllUser(),
+                  builder: (context, snapshot) {
+                    switch (snapshot.connectionState) {
+                      case ConnectionState.waiting:
+                      case ConnectionState.none:
+                        // Show shimmer effect while loading
+                        return _buildShimmerEffect();
+                
+                      case ConnectionState.active:
+                      case ConnectionState.done:
+                        final data = snapshot.data?.docs;
+                        _list = data?.map((e) => ChatUser.fromJson(e.data())).toList() ?? [];
+                
+                        // If searching, use _searchlist; otherwise, use _list
+                        final displayList = _issearching ? _searchlist : _list;
+                
+                        if (displayList.isNotEmpty) {
+                          return SingleChildScrollView(
+                            child: ListView.builder(
+                              shrinkWrap: true,
+                              
+                              physics: NeverScrollableScrollPhysics(),
+                              itemCount: displayList.length,
+                              itemBuilder: (context, index) {
+                                final user = displayList[index];
+                                return CarduserInvite(
+                                  user: user,
+                                  showStatus: true, // Show status
+                                  onRemove: () => _removeUser(user), status: '',
+                                );
+                              },
+                            ),
                           );
-                        },
-                      );
-                    } else {
-                      return Center(
-                        child: Text(
-                          'No users found',
-                          style: GoogleFonts.poppins(fontSize: 22),
-                        ),
-                      );
+                        } else {
+                          return Center(
+                            child: Text(
+                              'No users found',
+                              style: GoogleFonts.poppins(fontSize: 22),
+                            ),
+                          );
+                        }
                     }
-                }
-              },
-            ),
+                  },
+                ),
+              ),
+            ],
           ),
         ),
+      ),
+    );
+  }
+
+  // Shimmer effect widget
+  Widget _buildShimmerEffect() {
+    return Shimmer.fromColors(
+      baseColor: Colors.grey[300]!, // Base color
+      highlightColor: Colors.grey[100]!, // Highlight color
+      child: ListView.builder(
+        itemCount: 16, // Number of shimmering items
+        itemBuilder: (context, index) {
+          return Card(
+            margin: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+            elevation: 2,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: ListTile(
+              leading: Container(
+                width: 50,
+                height: 50,
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(25),
+                ),
+              ),
+              title: Container(
+                width: 150,
+                height: 16,
+                color: Colors.white,
+              ),
+              subtitle: Container(
+                width: 200,
+                height: 12,
+                color: Colors.white,
+              ),
+              trailing: Container(
+                width: 100,
+                height: 40,
+                color: Colors.white,
+              ),
+            ),
+          );
+        },
       ),
     );
   }
