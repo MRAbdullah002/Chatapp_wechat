@@ -210,22 +210,37 @@ static Future<void> deleteChat(ChatUser user) async {
 }
 
 static Future<void> sendFriendRequest(ChatUser recipient) async {
-  final time = DateTime.now().millisecondsSinceEpoch.toString();
+  try {
+    final time = DateTime.now().millisecondsSinceEpoch.toString();
+    
+    // Debug prints to check values
+    print('Sender (APIs.me.name): ${APIs.me.name}');
+    print('Recipient name: ${recipient.name}');
+    print('Sender ID (APIs.user.uid): ${APIs.user.uid}');
+    print('Recipient ID: ${recipient.id}');
 
-  // Create a FriendRequest object
-  final request = FriendRequest(
-    senderName: recipient.name.toString(),
-    senderId: APIs.user.uid,
-    recipientId: recipient.id.toString(),
-    status: 'pending',
-    timestamp: time, recipantName: '',
-  );
+    // Create a FriendRequest object
+    final request = FriendRequest(
+      senderName: APIs.me.name.toString(),
+      senderId: APIs.user.uid,
+      recipientId: recipient.id.toString(),
+      status: 'pending',
+      timestamp: time, 
+      recipientName: recipient.name.toString(), 
+    );
 
-  // Add the request to the 'friendRequests' collection
-  await APIs.firestore.collection('friendRequests').add(request.toJson());
-  print("Friend request sent to ${recipient.name}");
+    // Debug print to check request object
+    print('Request object: ${request.toJson()}');
+
+    // Add the request to the 'friendRequests' collection
+    await APIs.firestore.collection('friendRequests').add(request.toJson());
+    print("Friend request sent to ${recipient.name}");
+  } catch (e, stackTrace) {
+    print('Error sending friend request: $e');
+    print('Stack trace: $stackTrace');
+    throw e; // Re-throw to handle in UI
+  }
 }
-
 static Future<void> acceptFriendRequest(String requestId) async {
   // Update the request status to 'accepted'
   await APIs.firestore.collection('friendRequests').doc(requestId).update({
@@ -295,6 +310,8 @@ static Stream<List<ChatUser>> getFriends() {
       .map((snapshot) =>
           snapshot.docs.map((doc) => ChatUser.fromJson(doc.data())).toList());
 }
+
+
 static Stream<List<ChatUser>> getAcceptedFriends() {
   return firestore
       .collection('friendRequests')
@@ -355,6 +372,74 @@ static Stream<List<ChatUser>> getAcceptedFriends() {
       });
 }
 
+static Stream<List<ChatUser>> getFilteredFriends() {
+  return firestore
+      .collection('friendRequests')
+      .where('status', isEqualTo: 'accepted')
+      .where(Filter.or(
+        Filter('recipientId', isEqualTo: user.uid), // Current user is the recipient
+        Filter('senderId', isEqualTo: user.uid), // Current user is the sender
+      ))
+      .snapshots()
+      .asyncMap((snapshot) async {
+        List<Map<String, dynamic>> friendsWithTimestamps = [];
+
+        for (var doc in snapshot.docs) {
+          String senderId = doc['senderId'].toString();
+          String recipientId = doc['recipientId'].toString();
+
+          // Get the friend's ID (the other person in the conversation)
+          String friendId = senderId == user.uid ? recipientId : senderId;
+
+          // Check if a chat exists for this friend
+          final chatSnapshot = await firestore
+              .collection('chats')
+              .doc(getConversationID(friendId))
+              .get();
+
+          // If the chat exists and is not deleted, proceed
+          if (chatSnapshot.exists && !chatSnapshot['isDeleted']) {
+            // Get the latest message for each friend conversation
+            final latestMessageSnapshot = await firestore
+                .collection('chats/${getConversationID(friendId)}/messages/')
+                .orderBy('sent', descending: true)
+                .limit(1)
+                .get();
+
+            if (latestMessageSnapshot.docs.isNotEmpty) {
+              final latestMessage = latestMessageSnapshot.docs.first;
+              friendsWithTimestamps.add({
+                'friendId': friendId,
+                'lastMessageTime': latestMessage['sent'], // Timestamp of the latest message
+              });
+            }
+          }
+        }
+
+        // Sort friends based on the latest message timestamp
+        friendsWithTimestamps.sort((a, b) => b['lastMessageTime'].compareTo(a['lastMessageTime']));
+
+        // Extract ordered friend IDs
+        List orderedFriendIds = friendsWithTimestamps.map((e) => e['friendId']).toList();
+
+        if (orderedFriendIds.isEmpty) return [];
+
+        // Fetch ChatUser data for friends in the correct order
+        final friendsSnapshot = await firestore
+            .collection('user')
+            .where('id', whereIn: orderedFriendIds)
+            .get();
+
+        // Map the data while preserving order
+        List<ChatUser> friendsList = orderedFriendIds
+            .map((id) => friendsSnapshot.docs
+                .map((doc) => ChatUser.fromJson(doc.data()))
+                .firstWhere((friend) => friend.id == id))
+            .toList();
+
+        return friendsList;
+      });
+}
 
 static Future<void> sendChatImage(ChatUser chatUser, File file) async {
   final supabase = Supabase.instance.client;
@@ -389,7 +474,13 @@ static Future<void> sendChatImage(ChatUser chatUser, File file) async {
 }
 
 
-
+static Future<bool> checkChatExists(String userId) async {
+  var doc = await FirebaseFirestore.instance
+      .collection('chats')
+      .doc(userId)
+      .get();
+  return doc.exists;  // Returns true if the document still exists
+}
 
  
 }

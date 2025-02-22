@@ -4,11 +4,11 @@ class FriendRequest {
   String recipientId;
   String status; // Can be 'pending', 'accepted', or 'rejected'
   String timestamp;
-  String recipantName;
+  String recipientName;
 
   FriendRequest({
     required this.senderName,
-    required this.recipantName,
+    required this.recipientName,
     required this.senderId,
     required this.recipientId,
     required this.status,
@@ -18,7 +18,7 @@ class FriendRequest {
   // Convert a FriendRequest object to a JSON map
   Map<String, dynamic> toJson() {
     return {
-      'recipantName': recipantName,
+      'recipientName': recipientName, // Use the correct field name
       'senderName': senderName,
       'senderId': senderId,
       'recipientId': recipientId,
@@ -30,7 +30,7 @@ class FriendRequest {
   // Create a FriendRequest object from a JSON map
   factory FriendRequest.fromJson(Map<String, dynamic> json) {
     return FriendRequest(
-      recipantName: json['recipantName'],
+      recipientName: json['recipientName'] ?? json['recipantName'], // Handle both
       senderName: json['senderName'],
       senderId: json['senderId'],
       recipientId: json['recipientId'],
