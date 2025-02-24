@@ -1,13 +1,14 @@
 import 'dart:io';
-
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:chatting_application/api/Api.dart';
 import 'package:chatting_application/helper/my_date.dart';
 import 'package:chatting_application/model/messageUser.dart';
-import 'package:flutter/cupertino.dart';
+import 'package:chewie/chewie.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:photo_view/photo_view.dart';
+import 'package:video_player/video_player.dart';
 
 class MessageCard extends StatefulWidget {
   const MessageCard({
@@ -23,13 +24,14 @@ class MessageCard extends StatefulWidget {
 class _MessageCardState extends State<MessageCard> {
   @override
   Widget build(BuildContext context) {
+    
     return APIs.user.uid == widget.message.formID
         ? blueMessage()
         : greenMessage();
   }
 
   Widget blueMessage() {
-    final mq=MediaQuery.of(context).size;
+    final mq = MediaQuery.of(context).size;
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
@@ -56,7 +58,7 @@ class _MessageCardState extends State<MessageCard> {
         Flexible(
           child: Container(
             margin: const EdgeInsets.symmetric(horizontal: 15, vertical: 10),
-            padding:  EdgeInsets.all(widget.message.type == Type.image? mq.width*.04: mq.width*.04),
+            padding: EdgeInsets.all(mq.width * .04),
             decoration: BoxDecoration(
                 color: Colors.blue[100],
                 borderRadius: const BorderRadius.only(
@@ -65,33 +67,7 @@ class _MessageCardState extends State<MessageCard> {
                   bottomLeft: Radius.circular(30),
                 ),
                 border: Border.all(color: Colors.blue)),
-            child: widget.message.type == Type.text
-                ? Text(widget.message.msg.toString())
-                : GestureDetector(
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => FullScreenImageView(
-                            imagePath: widget.message.msg.toString(),
-                            isNetworkImage: true,
-                          ),
-                        ),
-                      );
-                    },
-                    onLongPress: (){
-
-                    },
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(15),
-                      child: CachedNetworkImage(
-                        imageUrl: widget.message.msg.toString(),
-                        placeholder: (context, url) => const CircularProgressIndicator(),
-                        errorWidget: (context, url, error) =>
-                            const Icon(Icons.image, size: 70),
-                      ),
-                    ),
-                  ),
+            child: _buildMessageContent(),
           ),
         ),
       ],
@@ -102,14 +78,14 @@ class _MessageCardState extends State<MessageCard> {
     if (widget.message.read!.isEmpty) {
       APIs.updateMessageReadStatus(widget.message);
     }
-    final mq=MediaQuery.of(context).size;
+    final mq = MediaQuery.of(context).size;
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
         Flexible(
           child: Container(
             margin: const EdgeInsets.symmetric(horizontal: 15, vertical: 10),
-            padding:  EdgeInsets.all(mq.width*.04),
+            padding: EdgeInsets.all(mq.width * .04),
             decoration: BoxDecoration(
                 color: const Color.fromARGB(255, 221, 247, 222),
                 borderRadius: const BorderRadius.only(
@@ -118,30 +94,7 @@ class _MessageCardState extends State<MessageCard> {
                   bottomRight: Radius.circular(30),
                 ),
                 border: Border.all(color: Colors.green)),
-            child: widget.message.type == Type.text
-                ? Text(widget.message.msg.toString())
-                : GestureDetector(
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => FullScreenImageView(
-                            imagePath: widget.message.msg.toString(),
-                            isNetworkImage: true,
-                          ),
-                        ),
-                      );
-                    },
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(15),
-                      child: CachedNetworkImage(
-                        imageUrl: widget.message.msg.toString(),
-                        placeholder: (context, url) => const CircularProgressIndicator(),
-                        errorWidget: (context, url, error) =>
-                            const Icon(Icons.image, size: 70),
-                      ),
-                    ),
-                  ),
+            child: _buildMessageContent(),
           ),
         ),
         Padding(
@@ -154,6 +107,68 @@ class _MessageCardState extends State<MessageCard> {
         ),
       ],
     );
+  }
+
+  Widget _buildMessageContent() {
+    if (widget.message.type == Type.text) {
+      return Text(widget.message.msg.toString());
+    } else if (widget.message.type == Type.image) {
+      return GestureDetector(
+        onTap: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => FullScreenImageView(
+                imagePath: widget.message.msg.toString(),
+                isNetworkImage: true,
+              ),
+            ),
+          );
+        },
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(15),
+          child: CachedNetworkImage(
+            imageUrl: widget.message.msg.toString(),
+            placeholder: (context, url) => const CircularProgressIndicator(),
+            errorWidget: (context, url, error) =>
+                const Icon(Icons.image, size: 70),
+          ),
+        ),
+      );
+    } else if (widget.message.type == Type.video) {
+      return GestureDetector(
+        onTap: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => FullScreenVideoView(
+                videoPath: widget.message.msg.toString(),
+                isNetworkVideo: true,
+              ),
+            ),
+          );
+        },
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(15),
+          child: Stack(
+            alignment: Alignment.center,
+            children: [
+              Container(
+                height: 150,
+                width: 200,
+                color: Colors.black12,
+                child: const Icon(
+                  Icons.play_circle_fill,
+                  color: Colors.white,
+                  size: 50,
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+    return const SizedBox.shrink();
   }
 }
 
@@ -172,8 +187,8 @@ class FullScreenImageView extends StatelessWidget {
       body: Center(
         child: PhotoView(
           imageProvider: isNetworkImage
-              ? CachedNetworkImageProvider(imagePath) // Load from network
-              : FileImage(File(imagePath)), // Load from file
+              ? CachedNetworkImageProvider(imagePath)
+              : FileImage(File(imagePath)),
           minScale: PhotoViewComputedScale.contained,
           maxScale: PhotoViewComputedScale.covered * 2,
         ),
@@ -181,3 +196,89 @@ class FullScreenImageView extends StatelessWidget {
     );
   }
 }
+
+class FullScreenVideoView extends StatefulWidget {
+  final String videoPath;
+  final bool isNetworkVideo;
+
+  const FullScreenVideoView({
+    super.key,
+    required this.videoPath,
+    this.isNetworkVideo = false,
+  });
+
+  @override
+  State<FullScreenVideoView> createState() => _FullScreenVideoViewState();
+}
+
+class _FullScreenVideoViewState extends State<FullScreenVideoView> {
+  late VideoPlayerController _videoController;
+  ChewieController? _chewieController;
+
+  @override
+  void initState() {
+    super.initState();
+    _initializePlayer();
+    _enterFullScreen();
+  }
+
+  Future<void> _initializePlayer() async {
+    _videoController = widget.isNetworkVideo
+        ? VideoPlayerController.networkUrl(Uri.parse(widget.videoPath))
+        : VideoPlayerController.file(File(widget.videoPath));
+
+    await _videoController.initialize();
+
+    _chewieController = ChewieController(
+      videoPlayerController: _videoController,
+      autoPlay: true,
+      looping: false,
+      aspectRatio: _videoController.value.aspectRatio,
+      allowPlaybackSpeedChanging: true,
+      allowFullScreen: true,
+      allowMuting: true,
+      showControlsOnInitialize: true,
+    );
+
+    setState(() {});
+  }
+
+  void _enterFullScreen() {
+    SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
+    SystemChrome.setPreferredOrientations([
+      DeviceOrientation.landscapeRight,
+      DeviceOrientation.landscapeLeft,
+      DeviceOrientation.portraitDown,
+      DeviceOrientation.portraitUp
+    ]);
+  }
+
+  void _exitFullScreen() {
+    SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+    SystemChrome.setPreferredOrientations([
+      DeviceOrientation.portraitUp,
+      DeviceOrientation.portraitDown,
+    ]);
+  }
+
+  @override
+  void dispose() {
+    _exitFullScreen();
+    _videoController.dispose();
+    _chewieController?.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.black,
+      body: Center(
+        child: _chewieController != null && _chewieController!.videoPlayerController.value.isInitialized
+            ? Chewie(controller: _chewieController!)
+            : const CircularProgressIndicator(),
+      ),
+    );
+  }
+}
+

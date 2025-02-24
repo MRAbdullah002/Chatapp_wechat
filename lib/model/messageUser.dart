@@ -2,8 +2,8 @@ class MessageUser {
   final String? msg;
   final String? toID;
   final String? formID;
-  late final String? read;
-  final Type type; 
+  final String? read;
+  final Type type;
   final String? sent;
 
   MessageUser({
@@ -16,13 +16,16 @@ class MessageUser {
   });
 
   // Deserialize from JSON
-  MessageUser.fromJson(Map<String, dynamic> json)
-      : msg = json['msg'] as String?,
-        toID = json['toID'] as String?,
-        formID = json['formID'] as String?,
-        read = json['read'] as String?,
-        type = (json['type'] as String) == Type.image.name ? Type.image : Type.text,
-        sent = json['sent'] as String?;
+  factory MessageUser.fromJson(Map<String, dynamic> json) {
+    return MessageUser(
+      msg: json['msg'] as String?,
+      toID: json['toID'] as String?,
+      formID: json['formID'] as String?,
+      read: json['read'] as String?,
+      type: Type.values.byName(json['type']), // Correct way to parse enum
+      sent: json['sent'] as String?,
+    );
+  }
 
   // Serialize to JSON
   Map<String, dynamic> toJson() => {
@@ -30,10 +33,10 @@ class MessageUser {
         'toID': toID,
         'formID': formID,
         'read': read,
-        'type': type.name, 
+        'type': type.name, // Stores the enum as a string
         'sent': sent,
       };
 }
 
 // Enum for message types
-enum Type { image, text }
+enum Type { image, text, video }

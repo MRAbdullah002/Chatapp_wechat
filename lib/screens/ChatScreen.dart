@@ -27,12 +27,12 @@ class _ChatscreenState extends State<Chatscreen> {
   final textcontroller = TextEditingController();
   final ScrollController _scrollController = ScrollController();
 
-  bool _emojishow = false,isUploading=false;
+  bool _emojishow = false, isUploading = false;
 
- @override
+  @override
   void initState() {
     super.initState();
-    APIs.getSelfInfo();
+
     APIs.updateActiveStatus(true);
 
     // Listen to app lifecycle changes for updating online status
@@ -47,15 +47,13 @@ class _ChatscreenState extends State<Chatscreen> {
       return Future.value(message);
     });
     SystemChrome.setSystemUIOverlayStyle(
-    const SystemUiOverlayStyle(
-      
-      systemNavigationBarColor: Colors.white,
-      systemNavigationBarIconBrightness: Brightness.dark,
-      statusBarIconBrightness: Brightness.dark, 
-    ),
-  );
+      const SystemUiOverlayStyle(
+        systemNavigationBarColor: Colors.white,
+        systemNavigationBarIconBrightness: Brightness.dark,
+        statusBarIconBrightness: Brightness.dark,
+      ),
+    );
   }
-
 
   @override
   Widget build(BuildContext context) {
@@ -80,10 +78,11 @@ class _ChatscreenState extends State<Chatscreen> {
           child: Scaffold(
             backgroundColor: const Color.fromARGB(255, 207, 231, 250),
             appBar: AppBar(
+              surfaceTintColor: Colors.white,
               backgroundColor: Colors.white,
               automaticallyImplyLeading: false,
               flexibleSpace: Padding(
-                padding:  EdgeInsets.only(top: mq.height*.03),
+                padding: EdgeInsets.only(top: mq.height * .03),
                 child: _appbar(),
               ),
             ),
@@ -95,53 +94,51 @@ class _ChatscreenState extends State<Chatscreen> {
                     // ignore: non_constant_identifier_names
                     builder: (context, Snapshot) {
                       // Handle the different states for the StreamBuilder
-                      
-                        final data = Snapshot.data?.docs;
 
-                        if (data == null || data.isEmpty) {
-                          return Center(
-                            child: Text(
-                              'Say hii......',
-                              style: GoogleFonts.poppins(fontSize: 26),
-                            ),
-                          );
-                        }
+                      final data = Snapshot.data?.docs;
 
-                        _list = data.map((e) {
-                          var messageData = e.data() as Map<String, dynamic>;
-                          return MessageUser.fromJson(messageData);
-                        }).toList();
-
-                        _list = _list.toList();
-
-                       
-                        WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToBottom(_scrollController));
-
-                        return ListView.builder(
-                          reverse: true,
-                          controller: _scrollController,
-                          itemCount: _list.length,
-                          padding: EdgeInsets.only(top: mq.height * .01),
-                          physics: const BouncingScrollPhysics(),
-                          itemBuilder: (context, index) {
-                            return MessageCard(message: _list[index]);
-                          },
+                      if (data == null || data.isEmpty) {
+                        return Center(
+                          child: Text(
+                            'Say hii......',
+                            style: GoogleFonts.poppins(fontSize: 26),
+                          ),
                         );
-                      
+                      }
 
-                      
+                      _list = data.map((e) {
+                        var messageData = e.data() as Map<String, dynamic>;
+                        return MessageUser.fromJson(messageData);
+                      }).toList();
+
+                      _list = _list.toList();
+
+                      WidgetsBinding.instance.addPostFrameCallback(
+                          (_) => _scrollToBottom(_scrollController));
+
+                      return ListView.builder(
+                        reverse: true,
+                        controller: _scrollController,
+                        itemCount: _list.length,
+                        padding: EdgeInsets.only(top: mq.height * .01),
+                        physics: const BouncingScrollPhysics(),
+                        itemBuilder: (context, index) {
+                          return MessageCard(message: _list[index]);
+                        },
+                      );
                     },
                   ),
                 ),
-                if(isUploading)
-               const Align(
-                alignment: Alignment.centerRight,
-                child:  Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 20.0,vertical: 8),
-                  child: CircularProgressIndicator(),
-                ),
-               ),
-              //  Send message
+                if (isUploading)
+                  const Align(
+                    alignment: Alignment.centerRight,
+                    child: Padding(
+                      padding:
+                          EdgeInsets.symmetric(horizontal: 20.0, vertical: 8),
+                      child: CircularProgressIndicator(),
+                    ),
+                  ),
+                //  Send message
                 _inputrow(),
 
                 if (_emojishow)
@@ -160,91 +157,89 @@ class _ChatscreenState extends State<Chatscreen> {
     );
   }
 
+  Widget _appbar() {
+    final mq = MediaQuery.of(context).size; // Get screen size
+    const minProfileSize =
+        50.0; // Minimum size to prevent shrinking on high DPI screens
 
+    return InkWell(
+      onTap: () {},
+      child: StreamBuilder(
+        stream: APIs.getUserinfo(widget.user),
+        builder: (context, snapshot) {
+          final data = snapshot.data?.docs;
+          final _list =
+              data?.map((e) => ChatUser.fromJson(e.data())).toList() ?? [];
+          final user =
+              _list.isNotEmpty ? _list[0] : widget.user; // Use latest user data
 
-Widget _appbar() {
-  final mq = MediaQuery.of(context).size; // Get screen size
-  const minProfileSize = 50.0; // Minimum size to prevent shrinking on high DPI screens
-
-  return InkWell(
-    onTap: () {},
-    child: StreamBuilder(
-      stream: APIs.getUserinfo(widget.user),
-      builder: (context, snapshot) {
-        final data = snapshot.data?.docs;
-        final _list = data?.map((e) => ChatUser.fromJson(e.data())).toList() ?? [];
-        final user = _list.isNotEmpty ? _list[0] : widget.user; // Use latest user data
-      
-        return Row(
-          children: [
-            IconButton(
-              onPressed: () {
-                Navigator.pushReplacement(
-                  context,
-                  MaterialPageRoute(builder: (_) => const MyHomePage()),
-                );
-              },
-              icon: Icon(Icons.arrow_back, size: max(mq.width * 0.06, 22)),
-            ),
-            ClipRRect(
-              borderRadius: BorderRadius.circular(mq.height * 0.5),
-              child: CachedNetworkImage(
-                width: max(mq.height * 0.05, minProfileSize), // Adaptive size
-                height: max(mq.height * 0.05, minProfileSize),
-                imageUrl: user.image.toString(),
-                errorWidget: (context, url, error) => CircleAvatar(
-                  radius: max(mq.height * 0.035, minProfileSize / 2),
-                  child: const Icon(CupertinoIcons.person),
+          return Row(
+            children: [
+              IconButton(
+                onPressed: () {
+                  Navigator.pop(
+                    context,
+                    MaterialPageRoute(builder: (_) => const MyHomePage()),
+                  );
+                },
+                icon: Icon(Icons.arrow_back, size: max(mq.width * 0.06, 22)),
+              ),
+              ClipRRect(
+                borderRadius: BorderRadius.circular(mq.height * 0.5),
+                child: CachedNetworkImage(
+                  width: max(mq.height * 0.05, minProfileSize), // Adaptive size
+                  height: max(mq.height * 0.05, minProfileSize),
+                  imageUrl: user.image.toString(),
+                  errorWidget: (context, url, error) => CircleAvatar(
+                    radius: max(mq.height * 0.035, minProfileSize / 2),
+                    child: const Icon(CupertinoIcons.person),
+                  ),
                 ),
               ),
-            ),
-            SizedBox(width: max(mq.width * 0.02, 6)), // Ensures minimum spacing
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                const SizedBox(height: 3),
-                FittedBox( // Auto-scales text size
-                  fit: BoxFit.scaleDown,
-                  child: Text(
-                    user.name.toString(),
-                    style: GoogleFonts.poppins(
-                      fontSize: max(mq.width * 0.04, 14), // Minimum font size
-                      color: Colors.black87,
-                      fontWeight: FontWeight.w600,
+              SizedBox(
+                  width: max(mq.width * 0.02, 6)), // Ensures minimum spacing
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const SizedBox(height: 1),
+                  FittedBox(
+                    // Auto-scales text size
+                    fit: BoxFit.scaleDown,
+                    child: Text(
+                      user.name.toString(),
+                      style: GoogleFonts.poppins(
+                        fontSize: max(mq.width * 0.04, 14), // Minimum font size
+                        color: Colors.black87,
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
-                    
                   ),
-                ),
-                const SizedBox(height: 3,),
-                FittedBox(
-                  fit: BoxFit.scaleDown,
-                  child: Text(
-                    user.status == true
-                        ? 'Online'
-                        : MyDateUtil.getLastActiveTime(
-                            context: context,
-                            last_seen: user.lastSeen.toString(),
-                          ),
-                    style: GoogleFonts.poppins(
-                      fontSize: max(mq.width * 0.035, 12), // Adaptive size
-                      fontWeight: FontWeight.w400,
-                      color: Colors.black54,
+                
+                  FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Text(
+                      user.status == true
+                          ? 'Online'
+                          : MyDateUtil.getLastActiveTime(
+                              context: context,
+                              last_seen: user.lastSeen.toString(),
+                            ),
+                      style: GoogleFonts.poppins(
+                        fontSize: max(mq.width * 0.035, 12), // Adaptive size
+                        fontWeight: FontWeight.w400,
+                        color: Colors.black54,
+                      ),
                     ),
-                    
                   ),
-                ),
-              ],
-            ),
-          ],
-        );
-      },
-    ),
-  );
-}
-
-
-
+                ],
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
 
   Widget _inputrow() {
     return Padding(
@@ -262,7 +257,6 @@ Widget _appbar() {
                 children: [
                   IconButton(
                     onPressed: () {
-                      
                       FocusScope.of(context).unfocus();
                       setState(() {
                         _emojishow = !_emojishow;
@@ -295,21 +289,18 @@ Widget _appbar() {
                   ),
                   IconButton(
                     onPressed: () async {
-                       final ImagePicker picker = ImagePicker();
+                      final ImagePicker picker = ImagePicker();
 
-                        final List<XFile> images =
-                            await picker.pickMultiImage();
+                      final List<XFile> images = await picker.pickMultiImage();
 
-                        for (var i in images) {
-                           setState(() =>isUploading=true);
-                         await APIs.sendChatImage(widget.user,File(i.path));
-                        
-                          print('sucees ${i.path}');
-                          setState(() =>isUploading=false);
-                        }    
-                      
+                      for (var i in images) {
+                        setState(() => isUploading = true);
+                        await APIs.sendChatImage(widget.user, File(i.path));
+
+                        print('sucees ${i.path}');
+                        setState(() => isUploading = false);
+                      }
                     },
-                    
                     icon: const Icon(
                       Icons.image,
                       color: Colors.blueAccent,
@@ -319,21 +310,40 @@ Widget _appbar() {
                     onPressed: () async {
                       final ImagePicker picker = ImagePicker();
 
-                        final XFile? image =
-                        
-                            await picker.pickImage(source: ImageSource.camera);
-                            
-                        if (image != null) {
-                          print('sucees ${image.path}');
-                          setState(() =>isUploading=true);
-                        await APIs.sendChatImage(widget.user,File(image.path));
-                        setState(() =>isUploading=false);
-                        } else {
-                          print('failed');
-                        }
+                      final XFile? image =
+                          await picker.pickImage(source: ImageSource.camera);
+
+                      if (image != null) {
+                        print('sucees ${image.path}');
+                        setState(() => isUploading = true);
+                        await APIs.sendChatImage(widget.user, File(image.path));
+                        setState(() => isUploading = false);
+                      } else {
+                        print('failed');
+                      }
                     },
                     icon: const Icon(
                       Icons.camera_alt_outlined,
+                      color: Colors.blueAccent,
+                    ),
+                  ),
+                  IconButton(
+                    onPressed: () async {
+                      final ImagePicker picker = ImagePicker();
+
+                      final List<XFile> videos = await picker.pickMultipleMedia(
+                        requestFullMetadata: false,
+                      );
+
+                      for (var video in videos) {
+                        setState(() => isUploading = true);
+                        await APIs.sendChatVideo(widget.user, File(video.path));
+                        print('Video uploaded: ${video.path}');
+                        setState(() => isUploading = false);
+                      }
+                    },
+                    icon: const Icon(
+                      Icons.video_library_outlined,
                       color: Colors.blueAccent,
                     ),
                   ),
@@ -344,7 +354,7 @@ Widget _appbar() {
           MaterialButton(
             onPressed: () {
               if (textcontroller.text.isNotEmpty) {
-                APIs.sendMessage(widget.user, textcontroller.text,Type.text);
+                APIs.sendMessage(widget.user, textcontroller.text, Type.text);
                 textcontroller.clear();
                 _scrollToBottom(_scrollController);
               } else {

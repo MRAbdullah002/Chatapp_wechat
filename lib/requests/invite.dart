@@ -19,13 +19,19 @@ class _InviteState extends State<Invite> {
   List<ChatUser> _list = []; // All users
   List<ChatUser> _searchlist = []; // Filtered search results
   bool _issearching = false;
+  bool _isInitialized = false; // Prevents multiple initializations
 
   @override
   void initState() {
     super.initState();
-    APIs.getSelfInfo();
+    if (!_isInitialized) {
+      _initializeData();
+      _isInitialized = true;
+    }
+  }
+
+  void _initializeData() {
     APIs.updateActiveStatus(true);
-    APIs.getAllUser();
 
     // Listen to app lifecycle changes for updating online status
     SystemChannels.lifecycle.setMessageHandler((message) {
@@ -39,23 +45,14 @@ class _InviteState extends State<Invite> {
     });
   }
 
-  // Local search function (Filters _list)
+  // Search function
   void _searchUsers(String query) {
-    query = query.toLowerCase();
-
     setState(() {
       _searchlist = _list
           .where((user) =>
-              user.name!.toLowerCase().contains(query) || user.email!.toLowerCase().contains(query))
+              user.name!.toLowerCase().contains(query.toLowerCase()) ||
+              user.email!.toLowerCase().contains(query.toLowerCase()))
           .toList();
-    });
-  }
-
-  // Function to remove a user from the list
-  void _removeUser(ChatUser user) {
-    setState(() {
-      _list.remove(user);
-      _searchlist.remove(user);
     });
   }
 
@@ -80,16 +77,12 @@ class _InviteState extends State<Invite> {
             backgroundColor: Colors.white,
             surfaceTintColor: Colors.white,
             scrolledUnderElevation: 0,
-            leading:IconButton(
-
+            leading: IconButton(
               icon: const Icon(Icons.home_outlined),
-              onPressed: (){
-                Navigator.push(
+              onPressed: () {
+                Navigator.pop(
                   context,
-                  MaterialPageRoute(
-                    builder: (BuildContext _) =>
-                        const MyHomePage(),
-                  ),
+                  MaterialPageRoute(builder: (context) => const MyHomePage()),
                 );
               },
             ),
@@ -98,16 +91,7 @@ class _InviteState extends State<Invite> {
                     decoration: const InputDecoration(
                         border: InputBorder.none, hintText: 'Search Name or Email...'),
                     autofocus: true,
-                    onChanged: (value) {
-                      if (value.isNotEmpty) {
-                        _searchUsers(value);
-                      } else {
-                        setState(() {
-                          _issearching = false;
-                          _searchlist.clear();
-                        });
-                      }
-                    },
+                    onChanged: (value) => _searchUsers(value),
                   )
                 : Text(
                     "We Chat",
@@ -132,9 +116,7 @@ class _InviteState extends State<Invite> {
                 onPressed: () {
                   Navigator.push(
                     context,
-                    MaterialPageRoute(
-                      builder: (context) => const FriendRequestsScreen(),
-                    ),
+                    MaterialPageRoute(builder: (context) => const FriendRequestsScreen()),
                   );
                 },
                 icon: const Icon(Icons.read_more),
@@ -143,55 +125,49 @@ class _InviteState extends State<Invite> {
           ),
           body: Column(
             children: [
-              const Divider(
-                thickness: 2,
-                height: 3,
-              ),
+              const Divider(thickness: 2, height: 3),
               Expanded(
-                child: StreamBuilder(
-                  stream: APIs.getAllUser(),
-                  builder: (context, snapshot) {
-                    switch (snapshot.connectionState) {
-                      case ConnectionState.waiting:
-                      case ConnectionState.none:
-                        // Show shimmer effect while loading
+                child: RefreshIndicator(
+                  onRefresh: _refreshUsers,
+                  child: StreamBuilder(
+                    stream: APIs.getAllUser(),
+                    builder: (context, snapshot) {
+                      if (snapshot.connectionState == ConnectionState.waiting) {
                         return _buildShimmerEffect();
-                
-                      case ConnectionState.active:
-                      case ConnectionState.done:
-                        final data = snapshot.data?.docs;
-                        _list = data?.map((e) => ChatUser.fromJson(e.data())).toList() ?? [];
-                
-                        // If searching, use _searchlist; otherwise, use _list
-                        final displayList = _issearching ? _searchlist : _list;
-                
-                        if (displayList.isNotEmpty) {
-                          return SingleChildScrollView(
-                            child: ListView.builder(
-                              shrinkWrap: true,
-                              
-                              physics: NeverScrollableScrollPhysics(),
-                              itemCount: displayList.length,
-                              itemBuilder: (context, index) {
-                                final user = displayList[index];
-                                return CarduserInvite(
-                                  user: user,
-                                  showStatus: true, // Show status
-                                  onRemove: () => _removeUser(user), status: '',
-                                );
-                              },
-                            ),
+                      }
+                  
+                      if (snapshot.hasError) {
+                        return Center(child: Text('Error: ${snapshot.error}'));
+                      }
+                  
+                      if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+                        return _buildNoUsersFound();
+                      }
+                  
+                      _list = snapshot.data!.docs
+                          .map((e) => ChatUser.fromJson(e.data()))
+                          .toList();
+                  
+                      final displayList = _issearching ? _searchlist : _list;
+                  
+                      if (displayList.isEmpty) {
+                        return _buildNoUsersFound();
+                      }
+                  
+                      return ListView.builder(
+                        itemCount: displayList.length,
+                        itemBuilder: (context, index) {
+                          final user = displayList[index];
+                          return CarduserInvite(
+                            user: user,
+                            showStatus: true,
+                            onRemove: () => _removeUser(user),
+                            status: '',
                           );
-                        } else {
-                          return Center(
-                            child: Text(
-                              'No users found',
-                              style: GoogleFonts.poppins(fontSize: 22),
-                            ),
-                          );
-                        }
-                    }
-                  },
+                        },
+                      );
+                    },
+                  ),
                 ),
               ),
             ],
@@ -200,14 +176,30 @@ class _InviteState extends State<Invite> {
       ),
     );
   }
+  Future<void> _refreshUsers() async {
+  setState(() {
+    _list.clear();
+    _searchlist.clear();
+  });
 
-  // Shimmer effect widget
+  // Fetch the latest data from Firestore
+  await Future.delayed(const Duration(seconds: 1)); // Simulating network delay
+}
+
+
+  void _removeUser(ChatUser user) {
+    setState(() {
+      _list.remove(user);
+      _searchlist.remove(user);
+    });
+  }
+
   Widget _buildShimmerEffect() {
     return Shimmer.fromColors(
-      baseColor: Colors.grey[300]!, // Base color
-      highlightColor: Colors.grey[100]!, // Highlight color
+      baseColor: Colors.grey[300]!,
+      highlightColor: Colors.grey[100]!,
       child: ListView.builder(
-        itemCount: 16, // Number of shimmering items
+        itemCount: 16,
         itemBuilder: (context, index) {
           return Card(
             margin: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
@@ -242,6 +234,15 @@ class _InviteState extends State<Invite> {
             ),
           );
         },
+      ),
+    );
+  }
+
+  Widget _buildNoUsersFound() {
+    return Center(
+      child: Text(
+        'No users found',
+        style: GoogleFonts.poppins(fontSize: 22),
       ),
     );
   }

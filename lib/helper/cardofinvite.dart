@@ -10,7 +10,8 @@ class CarduserInvite extends StatefulWidget {
     super.key,
     required this.user,
     required this.showStatus,
-    required this.onRemove, required String status,
+    required this.onRemove,
+    required String status,
   });
 
   final ChatUser user;
@@ -23,6 +24,7 @@ class CarduserInvite extends StatefulWidget {
 
 class _CarduserInviteState extends State<CarduserInvite> {
   String _requestStatus = 'none'; // none, pending, accepted, rejected
+  bool _isLoading = true; // Indicates if status is being fetched
 
   @override
   void initState() {
@@ -32,6 +34,8 @@ class _CarduserInviteState extends State<CarduserInvite> {
 
   // Check the status of the friend request
   Future<void> _checkRequestStatus() async {
+    await Future.delayed(const Duration(seconds: 1)); // 1-second delay
+
     final outgoingSnapshot = await APIs.firestore
         .collection('friendRequests')
         .where('senderId', isEqualTo: APIs.user.uid)
@@ -45,14 +49,16 @@ class _CarduserInviteState extends State<CarduserInvite> {
         .get();
 
     if (outgoingSnapshot.docs.isNotEmpty) {
-      setState(() {
-        _requestStatus = outgoingSnapshot.docs.first['status'];
-      });
+      _requestStatus = outgoingSnapshot.docs.first['status'];
     } else if (incomingSnapshot.docs.isNotEmpty) {
-      setState(() {
-        _requestStatus = incomingSnapshot.docs.first['status'];
-      });
+      _requestStatus = incomingSnapshot.docs.first['status'];
+    } else {
+      _requestStatus = 'none';
     }
+
+    setState(() {
+      _isLoading = false; // Status has been fetched
+    });
   }
 
   @override
@@ -83,10 +89,19 @@ class _CarduserInviteState extends State<CarduserInvite> {
                 ),
               ),
             ),
-            trailing: _buildTrailingButtons(),
+            trailing: _isLoading ? _buildLoadingIndicator() : _buildTrailingButtons(),
           ),
         ),
       ),
+    );
+  }
+
+  // Show loading indicator while checking request status
+  Widget _buildLoadingIndicator() {
+    return const SizedBox(
+      width: 24,
+      height: 24,
+      child: CircularProgressIndicator(strokeWidth: 2),
     );
   }
 
@@ -131,7 +146,7 @@ class _CarduserInviteState extends State<CarduserInvite> {
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
               ),
               onPressed: _sendFriendRequest,
-              child:  const Text('Request', style: TextStyle(color: Colors.white)),
+              child: const Text('Request', style: TextStyle(color: Colors.white)),
             ),
             const SizedBox(width: 5),
             // Reject Button
@@ -152,41 +167,35 @@ class _CarduserInviteState extends State<CarduserInvite> {
     }
   }
 
-  
-
   // Send a friend request
- Future<void> _sendFriendRequest() async {
-  String status = await APIs.checkFriendRequestStatus(widget.user.id.toString());
+  Future<void> _sendFriendRequest() async {
+    String status = await APIs.checkFriendRequestStatus(widget.user.id.toString());
 
-  if (status == 'pending' || status == 'accepted') {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content:  Text('Friend request already sent or accepted.')),
-    );
-    return;
-  }
+    if (status == 'pending' || status == 'accepted') {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Friend request already sent or accepted.')),
+      );
+      return;
+    }
 
-  setState(() {
-    _requestStatus = 'pending';
-  });
-
-  try {
-    await APIs.sendFriendRequest(widget.user);
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Friend request sent to ${widget.user.name}')),
-    );
-  } catch (e) {
     setState(() {
-      _requestStatus = 'none';
+      _requestStatus = 'pending';
     });
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Failed to send friend request: $e')),
-    );
+
+    try {
+      await APIs.sendFriendRequest(widget.user);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Friend request sent to ${widget.user.name}')),
+      );
+    } catch (e) {
+      setState(() {
+        _requestStatus = 'none';
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to send friend request: $e')),
+      );
+    }
   }
-}
-
-
-  // Accept a friend request
- 
 
   // Remove the card when a request is rejected
   void _removeCard() {

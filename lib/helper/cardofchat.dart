@@ -41,11 +41,10 @@ class _CarduserChatState extends State<CarduserChat> {
             builder: (context, snapshot) {
               // Check if data is available and not null
               final data = snapshot.data?.docs;
-              
+
               // If no data or empty data, return a basic ListTile
               if (data == null || data.isEmpty) {
                 return ListTile(
-                  
                   title: Text(widget.user.name ?? 'unknown user'),
                   subtitle: Text(widget.user.about.toString(), maxLines: 1),
                   leading: ClipRRect(
@@ -54,8 +53,7 @@ class _CarduserChatState extends State<CarduserChat> {
                       width: mq.height * .055,
                       height: mq.height * .055,
                       imageUrl: widget.user.image.toString(),
-                      errorWidget: (context, url, error) =>
-                          const CircleAvatar(
+                      errorWidget: (context, url, error) => const CircleAvatar(
                         child: Icon(CupertinoIcons.person),
                       ),
                     ),
@@ -85,11 +83,13 @@ class _CarduserChatState extends State<CarduserChat> {
               return ListTile(
                 title: Text(widget.user.name ?? 'unknown user'),
                 subtitle: Text(
-                  _message != null ? 
-                  _message!.type==Type.image 
-                    ?'Image'
-                    :_message!.msg.toString() 
-                    : widget.user.about.toString(),
+                  _message != null
+                      ? (_message!.type == Type.image
+                          ? 'Image'
+                          : (_message!.type == Type.video
+                              ? 'Video'
+                              : _message!.msg.toString()))
+                      : widget.user.about.toString(),
                   maxLines: 1,
                 ),
                 leading: ClipRRect(
@@ -98,27 +98,25 @@ class _CarduserChatState extends State<CarduserChat> {
                     width: mq.height * .055,
                     height: mq.height * .055,
                     imageUrl: widget.user.image.toString(),
-                    errorWidget: (context, url, error) =>
-                        const CircleAvatar(
+                    errorWidget: (context, url, error) => const CircleAvatar(
                       child: Icon(CupertinoIcons.person),
                     ),
                   ),
                 ),
-                trailing:
-                
-                _message==null ? null:
-                _message!.read!.isEmpty&& _message!.formID!=APIs.user.uid?
-                Container(
-                  height: 15,
-                  width: 15,
-                  decoration: BoxDecoration(
-                    color: Colors.greenAccent[400],
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                )
-                :Text(
-                   MyDateUtil.getLastMessagetime(context: context, time: _message!.sent.toString())
-                ),
+                trailing: _message == null
+                    ? null
+                    : _message!.read!.isEmpty &&
+                            _message!.formID != APIs.user.uid
+                        ? Container(
+                            height: 15,
+                            width: 15,
+                            decoration: BoxDecoration(
+                              color: Colors.greenAccent[400],
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                          )
+                        : Text(MyDateUtil.getLastMessagetime(
+                            context: context, time: _message!.sent.toString())),
               );
             },
           ),

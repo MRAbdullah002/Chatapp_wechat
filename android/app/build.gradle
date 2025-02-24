@@ -11,6 +11,7 @@ plugins {
 android {
     namespace = "com.example.chatting_application"
     compileSdk = flutter.compileSdkVersion
+    
     ndkVersion = flutter.ndkVersion
 
     compileOptions {

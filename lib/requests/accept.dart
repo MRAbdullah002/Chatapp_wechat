@@ -1,6 +1,8 @@
 import 'package:chatting_application/api/Api.dart';
 import 'package:chatting_application/model/Inviteuser.dart';
 import 'package:chatting_application/requests/card_accept.dart';
+import 'package:chatting_application/requests/invite.dart';
+import 'package:chatting_application/screens/myhomepage.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -49,6 +51,27 @@ class _FriendRequestsScreenState extends State<FriendRequestsScreen> {
               fontWeight: FontWeight.w800),
         ),
         centerTitle: true,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () {
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(builder: (_) => const Invite()),
+            );
+          },
+        ),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.home),
+            onPressed: () {
+              Navigator.pop(
+                context,
+                MaterialPageRoute(builder: (_) => const MyHomePage()),
+              );
+            },
+          ),
+          
+        ],
         
       ),
       body: Column(
