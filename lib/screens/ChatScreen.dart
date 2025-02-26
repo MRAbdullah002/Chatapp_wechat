@@ -40,18 +40,19 @@ class _ChatscreenState extends State<Chatscreen> {
     // Listen to app lifecycle changes for updating online status
     SystemChannels.lifecycle.setMessageHandler((message) {
       print('Lifecycle message: $message');
-      if (APIs.auth.currentUser != null) {
-        if (message.toString().contains('resume')) {
-          APIs.updateActiveStatus(true);
-        }
-        if (message.toString().contains('pause')) {
-          APIs.updateActiveStatus(false);
-        }
-        return Future.value(message);
+       if(APIs.auth.currentUser != null){
+
+      if (message.toString().contains('resume')) {
+        APIs.updateActiveStatus(true);
+      }
+      if (message.toString().contains('pause')) {
+        APIs.updateActiveStatus(false);
       }
       return Future.value(message);
+    }
+    return Future.value(message);
     });
-
+  
     SystemChrome.setSystemUIOverlayStyle(
       const SystemUiOverlayStyle(
         systemNavigationBarColor: Colors.white,
@@ -122,43 +123,37 @@ class _ChatscreenState extends State<Chatscreen> {
                       WidgetsBinding.instance.addPostFrameCallback(
                           (_) => _scrollToBottom(_scrollController));
 
-                      return ListView.builder(
-                        reverse: true,
-                        controller: _scrollController,
-                        itemCount: _list.length,
-                        padding: EdgeInsets.only(top: mq.height * .01),
-                        physics: const BouncingScrollPhysics(),
-                        itemBuilder: (context, index) {
-                          final message = _list[index];
-                          final previousMessage = index < _list.length - 1
-                              ? _list[index + 1]
-                              : null;
+                     return ListView.builder(
+  reverse: true,
+  controller: _scrollController,
+  itemCount: _list.length,
+  padding: EdgeInsets.only(top: mq.height * .01),
+  physics: const BouncingScrollPhysics(),
+  itemBuilder: (context, index) {
+    final message = _list[index];
+    final previousMessage = index < _list.length - 1 ? _list[index + 1] : null;
 
-                          final currentDate =
-                              DateTime.fromMillisecondsSinceEpoch(
-                                  int.parse(message.sent.toString()));
-                          final previousDate = previousMessage != null
-                              ? DateTime.fromMillisecondsSinceEpoch(
-                                  int.parse(previousMessage.sent.toString()))
-                              : null;
+    final currentDate = DateTime.fromMillisecondsSinceEpoch(int.parse(message.sent.toString()));
+    final previousDate = previousMessage != null
+        ? DateTime.fromMillisecondsSinceEpoch(int.parse(previousMessage.sent.toString()))
+        : null;
 
-                          // Show date header only if the current message is from a different day than the previous message
-                          final bool showDateHeader = previousDate == null ||
-                              currentDate.day != previousDate.day ||
-                              currentDate.month != previousDate.month ||
-                              currentDate.year != previousDate.year;
+    // Show date header only if the current message is from a different day than the previous message
+    final bool showDateHeader = previousDate == null ||
+        currentDate.day != previousDate.day ||
+        currentDate.month != previousDate.month ||
+        currentDate.year != previousDate.year;
 
-                          return Column(
-                            children: [
-                              if (showDateHeader)
-                                _buildDateHeader(MyDateUtil.getLastMessagetime(
-                                    context: context,
-                                    time: message.sent.toString())),
-                              MessageCard(message: message),
-                            ],
-                          );
-                        },
-                      );
+    return Column(
+      children: [
+        if (showDateHeader) _buildDateHeader(MyDateUtil.getLastMessagetime(context: context, time: message.sent.toString())),
+        MessageCard(message: message),
+      ],
+    );
+  },
+);
+
+
                     },
                   ),
                 ),
@@ -199,11 +194,7 @@ class _ChatscreenState extends State<Chatscreen> {
       onTap: () {
         Navigator.pushReplacement(
           context,
-          PageTransition(
-              type: PageTransitionType.fade,
-              child: ViewProfileScreen(
-                user: widget.user,
-              )),
+         PageTransition(type: PageTransitionType.fade, child: ViewProfileScreen(user: widget.user,)),
         );
       },
       child: StreamBuilder(
@@ -257,6 +248,7 @@ class _ChatscreenState extends State<Chatscreen> {
                       ),
                     ),
                   ),
+                
                   FittedBox(
                     fit: BoxFit.scaleDown,
                     child: Text(
@@ -423,8 +415,8 @@ class _ChatscreenState extends State<Chatscreen> {
       }
     });
   }
+  
 }
-
 Widget _buildDateHeader(String date) {
   return Padding(
     padding: const EdgeInsets.symmetric(vertical: 10),

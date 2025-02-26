@@ -576,7 +576,7 @@ static Future<void> sendChatVideo(ChatUser chatUser, File file) async {
   }
 }
 
-static Future<void> deleteMessage(MessageUser message) async {
+static Future<void> deleteMessage(MessageUser message, [deletedMessage]) async {
     // Delete message from Firebase
     await FirebaseFirestore.instance
         .collection('messages')
@@ -592,4 +592,6 @@ static Future<void> deleteMessage(MessageUser message) async {
     await supabase.storage.from('camera_image').remove([filePath]);
     await supabase.storage.from('videos_user').remove([filePath]);
   }
+
+
 }
