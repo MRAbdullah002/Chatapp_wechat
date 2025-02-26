@@ -35,14 +35,18 @@ class _InviteState extends State<Invite> {
 
     // Listen to app lifecycle changes for updating online status
     SystemChannels.lifecycle.setMessageHandler((message) {
-      if (message.toString().contains('resume')) {
-        APIs.updateActiveStatus(true);
-      }
-      if (message.toString().contains('pause')) {
-        APIs.updateActiveStatus(false);
-      }
-      return Future.value(message);
-    });
+
+    if(APIs.auth.currentUser!=null){
+    if (message.toString().contains('resume')) {
+      APIs.updateActiveStatus(true);
+    }
+    if (message.toString().contains('pause')) {
+      APIs.updateActiveStatus(false);
+    }
+    return Future.value(message);
+  }
+  return Future.value(message);
+  });
   }
 
   // Search function

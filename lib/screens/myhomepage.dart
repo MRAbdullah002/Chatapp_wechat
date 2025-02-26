@@ -18,11 +18,14 @@ final appInitProvider = Provider<void>((ref) {
 
   // Listen to app lifecycle changes for updating online status
   SystemChannels.lifecycle.setMessageHandler((message) {
-    if (message.toString().contains('resume')) {
-      APIs.updateActiveStatus(true);
-    }
-    if (message.toString().contains('pause')) {
-      APIs.updateActiveStatus(false);
+    if (APIs.auth.currentUser != null) {
+      if (message == AppLifecycleState.resumed.toString()) {
+        APIs.updateActiveStatus(true);
+      } else if (message == AppLifecycleState.paused.toString() ||
+          message == AppLifecycleState.inactive.toString() ||
+          message == AppLifecycleState.detached.toString()) {
+        APIs.updateActiveStatus(false);
+      }
     }
     return Future.value(message);
   });
@@ -72,7 +75,7 @@ class _MyHomePageState extends ConsumerState<MyHomePage> {
             leading: IconButton(
               icon: const Icon(Icons.home_outlined),
               onPressed: () {
-                Navigator.pop(
+                Navigator.pushReplacement(
                   context,
                   MaterialPageRoute(
                     builder: (BuildContext _) => const MyHomePage(),

@@ -8,14 +8,14 @@ class MyDateUtil{
 
 
   }
-  static String getLastMessagetime({required BuildContext context,required String time}){
+  static String getLastMessagetime({required BuildContext context,required String time, bool showyear=false}){
     final DateTime senttime = DateTime.fromMillisecondsSinceEpoch(int.parse(time));
     final DateTime now=DateTime.now();
     if (senttime.day==now.day&&senttime.month==now.month&&senttime.year==now.year) {
       return TimeOfDay.fromDateTime(senttime).format(context);
 
     }
-    return '${senttime.day} ${_getmonth(senttime)}'; 
+    return showyear ?'${senttime.day} ${_getmonth(senttime)} ${senttime.year}': '${senttime.day} ${_getmonth(senttime)}'; 
   }
   static String _getmonth(DateTime date){
     switch (date.month) {

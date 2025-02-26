@@ -4,6 +4,7 @@ import 'package:chatting_application/api/Api.dart';
 import 'package:chatting_application/helper/littlething.dart';
 import 'package:chatting_application/model/ChatUser.dart';
 import 'package:chatting_application/screens/login.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -44,6 +45,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     // Listen to app lifecycle changes for updating online status
     SystemChannels.lifecycle.setMessageHandler((message) {
       print('Lifecycle message: $message');
+      if (APIs.auth.currentUser!=null) {    
       if (message.toString().contains('resume')) {
         APIs.updateActiveStatus(true);
       }
@@ -51,7 +53,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
         APIs.updateActiveStatus(false);
       }
       return Future.value(message);
-    },);
+    }
+    return Future.value(message);
+    });
   }
 
   @override
@@ -90,11 +94,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
             onPressed: () async {
               Loading.showLoadingIndicator(context);
               await Future.delayed(const Duration(milliseconds: 2000));
+              await APIs.updateActiveStatus(false);
               await APIs.auth.signOut().then((value) async {
                 await GoogleSignIn().signOut().then(
                   (value) {
                     Navigator.pop(context);
                     Navigator.pop(context);
+                    APIs.auth=FirebaseAuth.instance;
                     Navigator.pushReplacement(context,
                         MaterialPageRoute(builder: (_) => const Login()));
                   },
@@ -460,7 +466,16 @@ class FullScreenImageView extends StatelessWidget {
   const FullScreenImageView(
       {Key? key, required this.imagePath, this.isNetworkImage = false})
       : super(key: key);
-
+void initState(){
+  
+  SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+  SystemChrome.setSystemUIOverlayStyle(
+    const SystemUiOverlayStyle(
+      statusBarColor: Colors.white, 
+      systemNavigationBarColor: Colors.white,
+    ),
+  );
+}
   @override
   Widget build(BuildContext context) {
     return Scaffold(

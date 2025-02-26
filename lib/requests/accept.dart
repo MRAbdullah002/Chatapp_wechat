@@ -23,15 +23,18 @@ class _FriendRequestsScreenState extends State<FriendRequestsScreen> {
     APIs.getFriendInvites();
     // Listen to app lifecycle changes for updating online status
     SystemChannels.lifecycle.setMessageHandler((message) {
-      print('Lifecycle message: $message');
-      if (message.toString().contains('resume')) {
-        APIs.updateActiveStatus(true);
-      }
-      if (message.toString().contains('pause')) {
-        APIs.updateActiveStatus(false);
-      }
-      return Future.value(message);
-    });
+
+    if(APIs.auth.currentUser!=null){
+    if (message.toString().contains('resume')) {
+      APIs.updateActiveStatus(true);
+    }
+    if (message.toString().contains('pause')) {
+      APIs.updateActiveStatus(false);
+    }
+    return Future.value(message);
+  }
+  return Future.value(message);
+  });
   }
 
   @override
