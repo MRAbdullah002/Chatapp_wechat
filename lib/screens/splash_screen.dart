@@ -1,4 +1,5 @@
 
+import 'package:chatting_application/api/Api.dart';
 import 'package:chatting_application/screens/root.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -16,6 +17,7 @@ class _SplashScreenState extends State<SplashScreen> {
  @override
 void initState() {
   super.initState();
+  APIs.getAcceptedFriends();
   SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
   SystemChrome.setSystemUIOverlayStyle(
     const SystemUiOverlayStyle(

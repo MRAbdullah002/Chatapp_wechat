@@ -576,13 +576,43 @@ static Future<void> sendChatVideo(ChatUser chatUser, File file) async {
   }
 }
 
-static Future<void> deleteMessage(MessageUser message, [deletedMessage]) async {
-    // Delete message from Firebase
-    await FirebaseFirestore.instance
+static Future<void> deleteMessage(MessageUser message, String chatUserId) async {
+  try {
+    // Ensure only the sender can delete their messages
+    if (APIs.user.uid != message.formID) {
+      print("Unauthorized deletion attempt: Only the sender can delete this message.");
+      return;
+    }
+
+    final conversationID = getConversationID(chatUserId); // Ensure we pass only the ID
+    final messageID = message.sent.toString(); // Ensure Firestore uses the same ID format
+
+    print("Generated conversation ID: $conversationID");
+    print("Message ID to delete: $messageID");
+
+    final docRef = FirebaseFirestore.instance
+        .collection('chats')
+        .doc(conversationID)
         .collection('messages')
-        .doc(message.sent.toString())
-        .delete();
+        .doc(messageID);
+
+    final docSnapshot = await docRef.get();
+
+    if (docSnapshot.exists) {
+      print("Message exists. Proceeding with deletion...");
+      await docRef.delete();
+      print("Message deleted successfully.");
+    } else {
+      print("Message with ID '$messageID' does NOT exist in chat '$conversationID'.");
+    }
+  } catch (e) {
+    print("Error deleting message: $e");
   }
+}
+
+
+
+
 
   static Future<void> deleteMedia(String url) async {
     // Delete media from Supabase

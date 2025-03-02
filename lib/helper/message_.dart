@@ -2,6 +2,7 @@ import 'dart:io';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:chatting_application/api/Api.dart';
 import 'package:chatting_application/helper/my_date.dart';
+import 'package:chatting_application/model/ChatUser.dart';
 import 'package:chatting_application/model/messageUser.dart';
 import 'package:chewie/chewie.dart';
 import 'package:flutter/material.dart';
@@ -13,22 +14,59 @@ import 'package:video_player/video_player.dart';
 class MessageCard extends StatefulWidget {
   const MessageCard({
     super.key,
-    required this.message,
+    required this.message, required this.chatUser,
   });
   final MessageUser message;
+  final ChatUser chatUser;
 
   @override
   State<MessageCard> createState() => _MessageCardState();
 }
 
 class _MessageCardState extends State<MessageCard> {
-  @override
-  Widget build(BuildContext context) {
-    
-    return APIs.user.uid == widget.message.formID
+void showDeleteDialog(MessageUser message) {
+  showDialog(
+    context: context,
+    builder: (context) {
+      return AlertDialog(
+        title: const Text('Delete Message'),
+        content: const Text('Are you sure you want to delete this message?'),
+        actions: <Widget>[
+          TextButton(
+            onPressed: () {
+              Navigator.of(context).pop();
+            },
+            child: const Text('No'),
+          ),
+          TextButton(
+            onPressed: () {
+              APIs.deleteMessage(message,widget.chatUser.id.toString());
+ // Pass message and chat ID
+              Navigator.of(context).pop();
+            },
+            child: const Text('Yes'),
+          ),
+        ],
+      );
+    },
+  );
+}
+
+@override
+Widget build(BuildContext context) {
+  return GestureDetector(
+  
+      onLongPress: () {
+        if (APIs.user.uid == widget.message.formID) {
+          showDeleteDialog(widget.message);
+        }
+      },
+    child: APIs.user.uid == widget.message.formID
         ? blueMessage()
-        : greenMessage();
-  }
+        : greenMessage(),
+  );
+}
+
 
   Widget blueMessage() {
     final mq = MediaQuery.of(context).size;

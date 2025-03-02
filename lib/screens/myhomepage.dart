@@ -16,17 +16,23 @@ final appInitProvider = Provider<void>((ref) {
   APIs.getAcceptedFriends();
   APIs.updateActiveStatus(true);
 
-  // Listen to app lifecycle changes for updating online status
   SystemChannels.lifecycle.setMessageHandler((message) {
     if (APIs.auth.currentUser != null) {
+      debugPrint("Lifecycle message: $message");
+
       if (message == AppLifecycleState.resumed.toString()) {
         APIs.updateActiveStatus(true);
       } else if (message == AppLifecycleState.paused.toString() ||
-          message == AppLifecycleState.inactive.toString() ||
-          message == AppLifecycleState.detached.toString()) {
+          message == AppLifecycleState.inactive.toString()) {
+        Future.delayed(const Duration(seconds: 2), () {
+          APIs.updateActiveStatus(false);
+        });
+      } else if (message == AppLifecycleState.detached.toString()) {
         APIs.updateActiveStatus(false);
       }
     }
+   
+
     return Future.value(message);
   });
 });
@@ -56,16 +62,24 @@ class _MyHomePageState extends ConsumerState<MyHomePage> {
     return GestureDetector(
       onTap: () => FocusScope.of(context).unfocus(),
       child: WillPopScope(
-        onWillPop: () {
-          if (_issearching) {
-            setState(() {
-              _issearching = !_issearching;
-            });
-            return Future.value(false);
-          } else {
-            return Future.value(true);
-          }
-        },
+    onWillPop: () async {
+  if (_issearching) {
+    setState(() {
+      _issearching = !_issearching;
+    });
+    return false;
+  } else {
+    APIs.updateActiveStatus(false); // Set status to offline
+
+    // Send app to background instead of closing
+    Future.delayed(const Duration(milliseconds: 500), () {
+      SystemNavigator.pop(); // Moves app to the background
+    });
+
+    return false; // Prevents app from being fully killed
+  }
+},
+
         child: Scaffold(
           backgroundColor: Colors.white,
           appBar: AppBar(
