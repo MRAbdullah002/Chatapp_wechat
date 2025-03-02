@@ -59,11 +59,15 @@ Future<void> _checkRequestStatus() async {
 
   @override
   Widget build(BuildContext context) {
+    
     return Card(
+      color: Colors.grey[200],
+      
       margin: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
       elevation: 2,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
       child: ListTile(
+        
         title: _isLoading
             ? _buildShimmerEffect(width: 150, height: 16) // Shimmer for title
             : Text("Friend Request from ${widget.request.senderName}"),

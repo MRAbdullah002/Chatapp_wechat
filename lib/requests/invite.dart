@@ -3,9 +3,11 @@ import 'package:chatting_application/helper/cardofinvite.dart';
 import 'package:chatting_application/model/ChatUser.dart';
 import 'package:chatting_application/requests/accept.dart';
 import 'package:chatting_application/screens/myhomepage.dart';
+import 'package:chatting_application/screens/veiw_profile_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:page_transition/page_transition.dart';
 import 'package:shimmer/shimmer.dart';
 
 class Invite extends StatefulWidget {
@@ -20,6 +22,7 @@ class _InviteState extends State<Invite> {
   List<ChatUser> _searchlist = []; // Filtered search results
   bool _issearching = false;
   bool _isInitialized = false; // Prevents multiple initializations
+  bool _showProfilePicture = true; // Toggle state for profile picture visibility
 
   @override
   void initState() {
@@ -35,18 +38,17 @@ class _InviteState extends State<Invite> {
 
     // Listen to app lifecycle changes for updating online status
     SystemChannels.lifecycle.setMessageHandler((message) {
-
-    if(APIs.auth.currentUser!=null){
-    if (message.toString().contains('resume')) {
-      APIs.updateActiveStatus(true);
-    }
-    if (message.toString().contains('pause')) {
-      APIs.updateActiveStatus(false);
-    }
-    return Future.value(message);
-  }
-  return Future.value(message);
-  });
+      if (APIs.auth.currentUser != null) {
+        if (message.toString().contains('resume')) {
+          APIs.updateActiveStatus(true);
+        }
+        if (message.toString().contains('pause')) {
+          APIs.updateActiveStatus(false);
+        }
+        return Future.value(message);
+      }
+      return Future.value(message);
+    });
   }
 
   // Search function
@@ -107,6 +109,7 @@ class _InviteState extends State<Invite> {
                   ),
             centerTitle: true,
             actions: [
+              
               IconButton(
                 onPressed: () {
                   setState(() {
@@ -118,7 +121,7 @@ class _InviteState extends State<Invite> {
               ),
               IconButton(
                 onPressed: () {
-                  Navigator.push(
+                  Navigator.pushReplacement(
                     context,
                     MaterialPageRoute(builder: (context) => const FriendRequestsScreen()),
                   );
@@ -162,11 +165,24 @@ class _InviteState extends State<Invite> {
                         itemCount: displayList.length,
                         itemBuilder: (context, index) {
                           final user = displayList[index];
-                          return CarduserInvite(
-                            user: user,
-                            showStatus: true,
-                            onRemove: () => _removeUser(user),
-                            status: '',
+                          return GestureDetector(
+                            onTap: () {
+                              print('print');
+                              Navigator.push(
+                                context,
+                                PageTransition(
+                                  type: PageTransitionType.fade,
+                                  child: ViewProfileScreen(user: user),
+                                ),
+                              );
+                            },
+                            child: CarduserInvite(
+                              user: user,
+                              showStatus: true,
+                              onRemove: () => _removeUser(user),
+                              status: '',
+                              showProfilePicture: _showProfilePicture,
+                            ),
                           );
                         },
                       );
@@ -180,16 +196,16 @@ class _InviteState extends State<Invite> {
       ),
     );
   }
+
   Future<void> _refreshUsers() async {
-  setState(() {
-    _list.clear();
-    _searchlist.clear();
-  });
+    setState(() {
+      _list.clear();
+      _searchlist.clear();
+    });
 
-  // Fetch the latest data from Firestore
-  await Future.delayed(const Duration(seconds: 1)); // Simulating network delay
-}
-
+    // Fetch the latest data from Firestore
+    await Future.delayed(const Duration(seconds: 1)); // Simulating network delay
+  }
 
   void _removeUser(ChatUser user) {
     setState(() {

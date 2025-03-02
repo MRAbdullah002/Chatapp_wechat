@@ -286,6 +286,7 @@ class _ChatscreenState extends State<Chatscreen> {
     return Padding(
       padding: const EdgeInsets.all(10.0),
       child: Row(
+        
         children: [
           Expanded(
             child: Card(
@@ -348,6 +349,7 @@ class _ChatscreenState extends State<Chatscreen> {
                       color: Colors.blueAccent,
                     ),
                   ),
+                  const SizedBox(width: 1,),
                   IconButton(
                     onPressed: () async {
                       final ImagePicker picker = ImagePicker();
@@ -369,6 +371,7 @@ class _ChatscreenState extends State<Chatscreen> {
                       color: Colors.blueAccent,
                     ),
                   ),
+                  const SizedBox(width: 1,),
                   IconButton(
                     onPressed: () async {
                       final ImagePicker picker = ImagePicker();
@@ -389,6 +392,7 @@ class _ChatscreenState extends State<Chatscreen> {
                       color: Colors.blueAccent,
                     ),
                   ),
+                  const SizedBox(width: 1,),
                 ],
               ),
             ),

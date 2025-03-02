@@ -8,6 +8,7 @@ class ChatUser {
   String? email;
   String? pushToken;
   bool? status;
+  bool? isdp;
 
   ChatUser({
     this.image,
@@ -19,6 +20,7 @@ class ChatUser {
     this.email,
     this.pushToken,
     this.status,
+    this.isdp,
   });
 
   ChatUser.fromJson(Map<String, dynamic> json)
@@ -30,7 +32,8 @@ class ChatUser {
       id = json['id'] as String?,
       email = json['email'] as String?,
       pushToken = json['push_token'] as String?,
-      status = json['status'] as bool?;
+      status = json['status'] as bool?,
+      isdp = json['isdp'] as bool?;
 
   Map<String, dynamic> toJson() => {
     'image': image,
@@ -42,5 +45,6 @@ class ChatUser {
     'email': email,
     'push_token': pushToken,
     'status': status,
+    'isdp': isdp,
   };
 }

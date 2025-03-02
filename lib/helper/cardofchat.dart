@@ -1,5 +1,6 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:chatting_application/api/Api.dart';
+import 'package:chatting_application/dialog/profile_dialogue.dart';
 import 'package:chatting_application/helper/my_date.dart';
 import 'package:chatting_application/model/ChatUser.dart';
 import 'package:chatting_application/model/messageUser.dart';
@@ -24,7 +25,7 @@ class _CarduserChatState extends State<CarduserChat> {
     return Padding(
       padding: const EdgeInsets.only(left: 1, right: 1),
       child: Card(
-        color: Colors.white,
+        color: Colors.grey[100],
         elevation: 2,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
         child: InkWell(
@@ -81,6 +82,7 @@ class _CarduserChatState extends State<CarduserChat> {
               }
 
               return ListTile(
+                
                 title: Text(widget.user.name ?? 'unknown user'),
                 subtitle: Text(
                   _message != null
@@ -92,14 +94,20 @@ class _CarduserChatState extends State<CarduserChat> {
                       : widget.user.about.toString(),
                   maxLines: 1,
                 ),
-                leading: ClipRRect(
-                  borderRadius: BorderRadius.circular(mq.height * .3),
-                  child: CachedNetworkImage(
-                    width: mq.height * .055,
-                    height: mq.height * .055,
-                    imageUrl: widget.user.image.toString(),
-                    errorWidget: (context, url, error) => const CircleAvatar(
-                      child: Icon(CupertinoIcons.person),
+                leading: InkWell(
+                  onTap: () => showDialog(
+                    context: context,
+                    builder: (_) => ProfileDialogue(user: widget.user),
+                  ),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(mq.height * .3),
+                    child: CachedNetworkImage(
+                      width: mq.height * .055,
+                      height: mq.height * .055,
+                      imageUrl: widget.user.image.toString(),
+                      errorWidget: (context, url, error) => const CircleAvatar(
+                        child: Icon(CupertinoIcons.person),
+                      ),
                     ),
                   ),
                 ),

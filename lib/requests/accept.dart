@@ -1,8 +1,10 @@
 import 'package:chatting_application/api/Api.dart';
+import 'package:chatting_application/model/ChatUser.dart';
 import 'package:chatting_application/model/Inviteuser.dart';
 import 'package:chatting_application/requests/card_accept.dart';
 import 'package:chatting_application/requests/invite.dart';
 import 'package:chatting_application/screens/myhomepage.dart';
+import 'package:chatting_application/screens/veiw_profile_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -23,35 +25,55 @@ class _FriendRequestsScreenState extends State<FriendRequestsScreen> {
     APIs.getFriendInvites();
     // Listen to app lifecycle changes for updating online status
     SystemChannels.lifecycle.setMessageHandler((message) {
+      if (APIs.auth.currentUser != null) {
+        if (message.toString().contains('resume')) {
+          APIs.updateActiveStatus(true);
+        }
+        if (message.toString().contains('pause')) {
+          APIs.updateActiveStatus(false);
+        }
+        return Future.value(message);
+      }
+      return Future.value(message);
+    });
+  }
 
-    if(APIs.auth.currentUser!=null){
-    if (message.toString().contains('resume')) {
-      APIs.updateActiveStatus(true);
+  // Fetch sender's user data
+ Future<ChatUser> _fetchSenderUserData(String senderId) async {
+  try {
+    print("Fetching user data for senderId: $senderId"); // Debug print
+
+    final snapshot = await APIs.firestore.collection('user').doc(senderId).get();
+
+    if (snapshot.exists) {
+      print("User data found: ${snapshot.data()}");
+      return ChatUser.fromJson(snapshot.data()!);
+    } else {
+      print("User not found for senderId: $senderId");
+      throw Exception('User not found');
     }
-    if (message.toString().contains('pause')) {
-      APIs.updateActiveStatus(false);
-    }
-    return Future.value(message);
+  } catch (e) {
+    print("Error fetching user data: $e");
+    throw Exception('Failed to fetch user data: $e');
   }
-  return Future.value(message);
-  });
-  }
+}
+
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
-      
       appBar: AppBar(
         surfaceTintColor: Colors.white,
         backgroundColor: Colors.white,
         title: Text(
           "Friend Requests",
           style: GoogleFonts.nunito(
-              letterSpacing: 2,
-              color: Colors.black,
-              fontSize: 26,
-              fontWeight: FontWeight.w800),
+            letterSpacing: 2,
+            color: Colors.black,
+            fontSize: 26,
+            fontWeight: FontWeight.w800,
+          ),
         ),
         centerTitle: true,
         leading: IconButton(
@@ -73,13 +95,11 @@ class _FriendRequestsScreenState extends State<FriendRequestsScreen> {
               );
             },
           ),
-          
         ],
-        
       ),
       body: Column(
         children: [
-          const Divider(thickness: 2,height: 3,),
+          const Divider(thickness: 2, height: 3),
           Expanded(
             child: StreamBuilder<List<FriendRequest>>(
               stream: APIs.getFriendInvites(),
@@ -92,29 +112,53 @@ class _FriendRequestsScreenState extends State<FriendRequestsScreen> {
                   return Center(child: Text('Error: ${snapshot.error}'));
                 } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
                   // Show empty state UI
-                  return  Center(child: Text("No pending friend requests",style:  GoogleFonts.nunito(
-                              letterSpacing: 2,
-                              color: Colors.black,
-                              fontSize: 20,
-                              fontWeight: FontWeight.w600),
-                        ),
+                  return Center(
+                    child: Text(
+                      "No pending friend requests",
+                      style: GoogleFonts.nunito(
+                        letterSpacing: 2,
+                        color: Colors.black,
+                        fontSize: 20,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
                   );
                 } else {
                   // Data is available, show the list
                   final requests = snapshot.data!;
-            
+
                   return SingleChildScrollView(
                     child: ListView.builder(
                       physics: const NeverScrollableScrollPhysics(),
                       shrinkWrap: true,
                       itemCount: requests.length,
                       itemBuilder: (context, index) {
-                        return FriendRequestCard(
-                          request: requests[index],
-                          onRemove: () => requests.removeAt(index),
-                          onMessage: (String friendId) {
-                            // Handle message navigation
+                        return GestureDetector(
+                          onTap: () async {
+                            try {
+                              // Fetch sender's user data
+                              final senderUser = await _fetchSenderUserData(requests[index].senderId);
+
+                              // Navigate to ViewProfileScreen with sender's user data
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => ViewProfileScreen(user: senderUser),
+                                ),
+                              );
+                            } catch (e) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(content: Text('Error fetching user data: $e')),
+                              );
+                            }
                           },
+                          child: FriendRequestCard(
+                            request: requests[index],
+                            onRemove: () => requests.removeAt(index),
+                            onMessage: (String friendId) {
+                              // Handle message navigation
+                            },
+                          ),
                         );
                       },
                     ),

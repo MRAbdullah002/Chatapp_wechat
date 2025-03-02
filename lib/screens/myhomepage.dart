@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -14,6 +16,7 @@ import 'package:shimmer/shimmer.dart';
 /// **Provider to manage initialization state**
 final appInitProvider = Provider<void>((ref) {
   APIs.getAcceptedFriends();
+  APIs.getSelfInfo();
   APIs.updateActiveStatus(true);
 
   SystemChannels.lifecycle.setMessageHandler((message) {
@@ -49,6 +52,7 @@ class _MyHomePageState extends ConsumerState<MyHomePage> {
   List<ChatUser> _list = [];
   List<ChatUser> _searchlist = [];
   bool _issearching = false;
+  Timer? _debounceTimer; // For debouncing search
 
   @override
   void initState() {
@@ -58,28 +62,30 @@ class _MyHomePageState extends ConsumerState<MyHomePage> {
   }
 
   @override
+  void dispose() {
+    _debounceTimer?.cancel(); // Cancel the timer when the widget is disposed
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     return GestureDetector(
       onTap: () => FocusScope.of(context).unfocus(),
       child: WillPopScope(
-    onWillPop: () async {
-  if (_issearching) {
-    setState(() {
-      _issearching = !_issearching;
-    });
-    return false;
-  } else {
-    APIs.updateActiveStatus(false); // Set status to offline
-
-    // Send app to background instead of closing
-    Future.delayed(const Duration(milliseconds: 500), () {
-      SystemNavigator.pop(); // Moves app to the background
-    });
-
-    return false; // Prevents app from being fully killed
-  }
-},
-
+        onWillPop: () async {
+          if (_issearching) {
+            setState(() {
+              _issearching = !_issearching;
+            });
+            return false;
+          } else {
+            APIs.updateActiveStatus(false); // Set status to offline
+            Future.delayed(const Duration(milliseconds: 500), () {
+              SystemNavigator.pop(); // Moves app to the background
+            });
+            return false; // Prevents app from being fully killed
+          }
+        },
         child: Scaffold(
           backgroundColor: Colors.white,
           appBar: AppBar(
@@ -102,28 +108,7 @@ class _MyHomePageState extends ConsumerState<MyHomePage> {
                     decoration: const InputDecoration(
                         border: InputBorder.none, hintText: 'Name, Email...'),
                     autofocus: true,
-                    onChanged: (value) async {
-                      setState(() {
-                        _searchlist.clear();
-                      });
-
-                      // Simulate a delay for searching
-                      await Future.delayed(const Duration(milliseconds: 500));
-
-                      for (var i in _list) {
-                        if (i.name!
-                                .toLowerCase()
-                                .contains(value.toLowerCase()) ||
-                            i.email!
-                                .toLowerCase()
-                                .contains(value.toLowerCase())) {
-                          _searchlist.add(i);
-                        }
-                      }
-                      setState(() {
-                        _searchlist;
-                      });
-                    },
+                    onChanged: _onSearchChanged, // Updated search handler
                   )
                 : Text(
                     "We Chat",
@@ -139,22 +124,22 @@ class _MyHomePageState extends ConsumerState<MyHomePage> {
                 onPressed: () {
                   setState(() {
                     _issearching = !_issearching;
-                    _searchlist.clear();
+                    _searchlist.clear(); // Clear search results when toggling search
                   });
                 },
                 icon: Icon(_issearching ? Icons.cancel_outlined : Icons.search),
               ),
               IconButton(
-                  onPressed: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (BuildContext _) =>
-                            ProfileScreen(user: APIs.me),
-                      ),
-                    );
-                  },
-                  icon: const Icon(Icons.more_vert_outlined))
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (BuildContext _) => ProfileScreen(user: APIs.me),
+                    ),
+                  );
+                },
+                icon: const Icon(Icons.more_vert_outlined),
+              ),
             ],
           ),
           floatingActionButton: Padding(
@@ -162,10 +147,11 @@ class _MyHomePageState extends ConsumerState<MyHomePage> {
             child: FloatingActionButton(
               onPressed: () {
                 Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => const Invite(),
-                    ));
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const Invite(),
+                  ),
+                );
               },
               elevation: 1,
               backgroundColor: Colors.blue,
@@ -221,6 +207,33 @@ class _MyHomePageState extends ConsumerState<MyHomePage> {
         ),
       ),
     );
+  }
+
+  // Debounced search handler
+  void _onSearchChanged(String query) {
+    if (_debounceTimer?.isActive ?? false) {
+      _debounceTimer?.cancel(); // Cancel the previous timer
+    }
+
+    _debounceTimer = Timer(const Duration(milliseconds: 300), () {
+      if (query.isEmpty) {
+        setState(() {
+          _searchlist.clear(); // Clear search results if the query is empty
+        });
+        return;
+      }
+
+      final searchResults = _list
+          .where((user) =>
+              user.name!.toLowerCase().contains(query.toLowerCase()) ||
+              user.email!.toLowerCase().contains(query.toLowerCase()))
+          .toSet() // Use a Set to filter duplicates
+          .toList(); // Convert back to a List
+
+      setState(() {
+        _searchlist = searchResults;
+      });
+    });
   }
 
   Widget _buildEmptyState() {
@@ -297,32 +310,32 @@ class _MyHomePageState extends ConsumerState<MyHomePage> {
       ),
     );
   }
-  void _showDeleteDialog(ChatUser user) {
-  showDialog(
-    context: context,
-    builder: (context) {
-      return AlertDialog(
-        title: const Text("Delete Chat"),
-        content: Text("Are you sure you want to delete the chat with ${user.name}?"),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text("Cancel"),
-          ),
-          TextButton(
-            onPressed: () {
-              APIs.deleteChat(user);
-              Navigator.pop(context);
-            },
-            child: const Text(
-              "Delete",
-              style: TextStyle(color: Colors.red),
-            ),
-          ),
-        ],
-      );
-    },
-  );
-}
 
+  void _showDeleteDialog(ChatUser user) {
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text("Delete Chat"),
+          content: Text("Are you sure you want to delete the chat with ${user.name}?"),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text("Cancel"),
+            ),
+            TextButton(
+              onPressed: () {
+                APIs.deleteChat(user);
+                Navigator.pop(context);
+              },
+              child: const Text(
+                "Delete",
+                style: TextStyle(color: Colors.red),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
 }

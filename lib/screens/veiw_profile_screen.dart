@@ -1,15 +1,12 @@
 import 'dart:io';
-
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:chatting_application/api/Api.dart';
 import 'package:chatting_application/helper/my_date.dart';
 import 'package:chatting_application/model/ChatUser.dart';
-import 'package:chatting_application/screens/ChatScreen.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:page_transition/page_transition.dart';
 import 'package:photo_view/photo_view.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -62,15 +59,8 @@ class _ViewProfileScreenState extends State<ViewProfileScreen> {
               fontWeight: FontWeight.w800),
         ),
         centerTitle: true,
-        leading: IconButton(
-          onPressed: () {
-            Navigator.pushReplacement(context, PageTransition(type: PageTransitionType.fade,child: Chatscreen(user: widget.user,)));
-          },
-          icon: const Icon(
-            CupertinoIcons.back,
-            color: Colors.black,
-          ),
-        ),
+        
+       
       ),
       floatingActionButton: Row(
         mainAxisAlignment: MainAxisAlignment.center,

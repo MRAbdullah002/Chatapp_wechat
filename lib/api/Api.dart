@@ -4,6 +4,7 @@ import 'package:chatting_application/model/Inviteuser.dart';
 import 'package:chatting_application/model/messageUser.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart' as firebase_auth;
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class APIs {
@@ -12,15 +13,31 @@ class APIs {
 
   static FirebaseFirestore firestore = FirebaseFirestore.instance;
   static firebase_auth.User get user => auth.currentUser!;
+  static FirebaseMessaging fMessaging = FirebaseMessaging.instance;
+   
+  static Future<void>   getFirebaseMessaingToken() async{
+    await fMessaging.requestPermission();
+    await fMessaging.getToken().then((t) {
+      if(t !=null){
+        me.pushToken = t;
+        print('push token: $t');
+      }
+    } );
+
+
+  }
   static Future<bool> userExist() async {
     return (await firestore.collection('user').doc(user.uid).get()).exists;
+    
   }
 
   static Future<void> getSelfInfo() async {
     await firestore.collection('user').doc(user.uid).get().then(
       (user) async {
         if (user.exists) {
+          
           me = ChatUser.fromJson(user.data()!);
+          await getFirebaseMessaingToken();
           print("my data ${user.data()}");
         } else {
           await createUser().then(
@@ -88,7 +105,8 @@ class APIs {
 
   static Stream<QuerySnapshot<Map<String, dynamic>>> getUserinfo(
       ChatUser chatuser) {
-    return firestore
+       
+        return firestore
         .collection('user')
         .where('id', isEqualTo: chatuser.id)
         .snapshots();
@@ -101,6 +119,7 @@ class APIs {
     await firestore.collection('user').doc(user.uid).update({
       'status': isOnline,
       'last_seen': lastSeen,
+      'pushToken': me.pushToken,
     });
   }
 
@@ -622,6 +641,54 @@ static Future<void> deleteMessage(MessageUser message, String chatUserId) async 
     await supabase.storage.from('camera_image').remove([filePath]);
     await supabase.storage.from('videos_user').remove([filePath]);
   }
+static Future<void> removeFriend(ChatUser friend) async {
+    try {
+      // Remove the friend from the current user's friends list
+      await firestore
+          .collection('users')
+          .doc(user.uid)
+          .collection('friends')
+          .doc(friend.id)
+          .delete();
 
+      // Remove the current user from the friend's friends list
+      await firestore
+          .collection('users')
+          .doc(friend.id)
+          .collection('friends')
+          .doc(user.uid)
+          .delete();
+
+      // Optionally, you can also delete any friend request records
+      await _deleteFriendRequestRecords(friend.id.toString());
+    } catch (e) {
+      throw Exception('Failed to remove friend: $e');
+    }
+  }
+
+  // Helper method to delete friend request records
+  static Future<void> _deleteFriendRequestRecords(String friendId) async {
+    // Delete outgoing friend request (if any)
+    final outgoingRequest = await firestore
+        .collection('friendRequests')
+        .where('senderId', isEqualTo: user.uid)
+        .where('recipientId', isEqualTo: friendId)
+        .get();
+
+    for (var doc in outgoingRequest.docs) {
+      await doc.reference.delete();
+    }
+
+    // Delete incoming friend request (if any)
+    final incomingRequest = await firestore
+        .collection('friendRequests')
+        .where('senderId', isEqualTo: friendId)
+        .where('recipientId', isEqualTo: user.uid)
+        .get();
+
+    for (var doc in incomingRequest.docs) {
+      await doc.reference.delete();
+    }
+  }
 
 }
